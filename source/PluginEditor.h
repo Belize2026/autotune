@@ -18,10 +18,12 @@ private:
 
     juce::TextButton powerButton;
     juce::ComboBox keyBox, scaleBox;
-    juce::Label titleLabel, keyLabel, scaleLabel, readoutLabel;
+    juce::Slider reverbDial;
+    juce::Label titleLabel, keyLabel, scaleLabel, reverbLabel, readoutLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> keyAttachment, scaleAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> reverbAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HardTuneAudioProcessorEditor)
 };

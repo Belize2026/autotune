@@ -14,9 +14,14 @@ melodic rap — not a natural-sounding corrector.
 - Time-domain pitch shifting (dual-tap crossfaded delay line), no formant
   preservation
 - Controls: On/Off, Key (C–B), Scale (Chromatic / Major / Minor / Minor
-  Pentatonic)
+  Pentatonic), Reverb dial
+- Reverb: a single rotary dial (0–100 %) after the tune chain. At 0 the
+  reverb is fully inactive; turning it up activates it and blends in the wet
+  signal. It works independently of the tune On/Off button, so the dry
+  bypass can still carry reverb.
 
-Explicitly **not** in v1: speed knob, formant toggle, wet/dry mix.
+Explicitly **not** in v1: speed knob, formant toggle, wet/dry mix for the
+tuner itself.
 
 ## Building
 
@@ -74,7 +79,7 @@ cmake --build build --target HardTuneDspTests
 | `source/dsp/Quantizer.h` | Key/scale hard quantiser (pure C++) |
 | `source/dsp/PitchShifter.h` | Zero-glide delay-line pitch shifter (pure C++) |
 | `source/PluginProcessor.*` | JUCE processor: parameters + the detect/quantise/shift chain |
-| `source/PluginEditor.*` | Single-window UI: power button, key + scale dropdowns, live note readout |
+| `source/PluginEditor.*` | Single-window UI: power button, key + scale dropdowns, reverb dial, live note readout |
 | `tests/DspTests.cpp` | Headless DSP tests |
 
 The DSP headers have no JUCE dependency on purpose, so the core sound can be

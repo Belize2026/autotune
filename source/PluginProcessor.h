@@ -24,7 +24,10 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 0.0; }
+    double getTailLengthSeconds() const override
+    {
+        return (reverbParam != nullptr && reverbParam->load() > 0.0f) ? 3.0 : 0.0;
+    }
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -44,14 +47,20 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    void applyReverb (juce::AudioBuffer<float>& buffer, bool tuneWasApplied);
+
     juce::AudioProcessorValueTreeState apvts;
-    std::atomic<float>* powerParam = nullptr;
-    std::atomic<float>* keyParam   = nullptr;
-    std::atomic<float>* scaleParam = nullptr;
+    std::atomic<float>* powerParam  = nullptr;
+    std::atomic<float>* keyParam    = nullptr;
+    std::atomic<float>* scaleParam  = nullptr;
+    std::atomic<float>* reverbParam = nullptr;
 
     hardtune::PitchDetector detector;
     hardtune::Quantizer     quantizer;
     hardtune::PitchShifter  shifter;
+
+    juce::Reverb reverb;
+    bool reverbWasActive = false;
 
     // Re-detect at most every `detectionHopSamples` samples so tiny host
     // block sizes don't multiply the analysis cost.

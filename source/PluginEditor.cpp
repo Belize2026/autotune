@@ -58,12 +58,30 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupCombo (keyBox, keyLabel, "KEY", "key", keyAttachment);
     setupCombo (scaleBox, scaleLabel, "SCALE", "scale", scaleAttachment);
 
+    reverbLabel.setText ("REVERB", juce::dontSendNotification);
+    reverbLabel.setFont (juce::FontOptions (14.0f, juce::Font::bold));
+    reverbLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.7f));
+    reverbLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (reverbLabel);
+
+    reverbDial.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    reverbDial.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
+    reverbDial.setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (accentColour));
+    reverbDial.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (offColour));
+    reverbDial.setColour (juce::Slider::thumbColourId, juce::Colours::white);
+    reverbDial.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.7f));
+    reverbDial.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    reverbDial.setTextValueSuffix (" %");
+    addAndMakeVisible (reverbDial);
+    reverbAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        apvts, "reverb", reverbDial);
+
     readoutLabel.setFont (juce::FontOptions (15.0f));
     readoutLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
     readoutLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (readoutLabel);
 
-    setSize (420, 300);
+    setSize (420, 420);
     startTimerHz (30);
 }
 
@@ -99,6 +117,10 @@ void HardTuneAudioProcessorEditor::resized()
     keyBox.setBounds (keyArea.removeFromTop (30));
     scaleLabel.setBounds (scaleArea.removeFromTop (18));
     scaleBox.setBounds (scaleArea.removeFromTop (30));
+
+    area.removeFromTop (12);
+    reverbLabel.setBounds (area.removeFromTop (18));
+    reverbDial.setBounds (area.removeFromTop (100).withSizeKeepingCentre (110, 100));
 
     area.removeFromTop (8);
     readoutLabel.setBounds (area.removeFromTop (24));

@@ -14,9 +14,10 @@ HardTuneAudioProcessor::HardTuneAudioProcessor()
                           .withOutput ("Output", juce::AudioChannelSet::mono(), true)),
       apvts (*this, nullptr, "HardTune", createParameterLayout())
 {
-    powerParam = apvts.getRawParameterValue ("power");
-    keyParam   = apvts.getRawParameterValue ("key");
-    scaleParam = apvts.getRawParameterValue ("scale");
+    powerParam  = apvts.getRawParameterValue ("power");
+    keyParam    = apvts.getRawParameterValue ("key");
+    scaleParam  = apvts.getRawParameterValue ("scale");
+    reverbParam = apvts.getRawParameterValue ("reverb");
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::createParameterLayout()
@@ -29,6 +30,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::crea
         juce::ParameterID { "key", 1 }, "Key", keyNames, 0));
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { "scale", 1 }, "Scale", scaleNames, 0));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "reverb", 1 }, "Reverb",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
 
     return { params.begin(), params.end() };
 }
@@ -52,6 +57,10 @@ void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
     detectionHopSamples   = juce::jmax (64, (int) std::lround (sampleRate * 0.006));
     samplesSinceDetection = detectionHopSamples; // detect on the first block
     currentRatio          = 1.0;
+
+    reverb.setSampleRate (sampleRate);
+    reverb.reset();
+    reverbWasActive = false;
 
     setLatencySamples (shifter.getLatencySamples());
 }
@@ -80,7 +89,10 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
         detectedHz.store (0.0f);
         targetHz.store (0.0f);
-        return; // dry signal passes through untouched
+
+        // The tune chain passes dry, but the reverb dial stays independent.
+        applyReverb (buffer, false);
+        return;
     }
 
     samplesSinceDetection += numSamples;
@@ -114,8 +126,45 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (int i = 0; i < numSamples; ++i)
         channel[i] = shifter.processSample (channel[i]);
 
+    applyReverb (buffer, true);
+
     for (int ch = 1; ch < numChannels; ++ch)
         buffer.copyFrom (ch, 0, channel, numSamples);
+}
+
+void HardTuneAudioProcessor::applyReverb (juce::AudioBuffer<float>& buffer, bool tuneWasApplied)
+{
+    const float amount = reverbParam->load() * 0.01f;
+
+    if (amount <= 0.001f)
+    {
+        // Dial at zero = reverb fully inactive; clear the tail so nothing
+        // stale plays back when it is dialled up again.
+        if (reverbWasActive)
+        {
+            reverb.reset();
+            reverbWasActive = false;
+        }
+        return;
+    }
+    reverbWasActive = true;
+
+    juce::Reverb::Parameters params;
+    params.roomSize = 0.72f;
+    params.damping  = 0.45f;
+    params.width    = 1.0f;
+    params.wetLevel = amount * 0.9f;
+    params.dryLevel = 1.0f - 0.4f * amount;
+    reverb.setParameters (params);
+
+    // The tuned path is mono (channel 0 is copied out afterwards); the
+    // bypassed path keeps a stereo input stereo.
+    if (! tuneWasApplied && buffer.getNumChannels() >= 2)
+        reverb.processStereo (buffer.getWritePointer (0),
+                              buffer.getWritePointer (1),
+                              buffer.getNumSamples());
+    else
+        reverb.processMono (buffer.getWritePointer (0), buffer.getNumSamples());
 }
 
 void HardTuneAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
