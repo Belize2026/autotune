@@ -1,0 +1,142 @@
+#include "PluginProcessor.h"
+#include "PluginEditor.h"
+
+namespace
+{
+const juce::StringArray keyNames { "C", "C#", "D", "D#", "E", "F",
+                                   "F#", "G", "G#", "A", "A#", "B" };
+const juce::StringArray scaleNames { "Chromatic", "Major", "Minor", "Minor Pentatonic" };
+} // namespace
+
+HardTuneAudioProcessor::HardTuneAudioProcessor()
+    : AudioProcessor (BusesProperties()
+                          .withInput ("Input", juce::AudioChannelSet::mono(), true)
+                          .withOutput ("Output", juce::AudioChannelSet::mono(), true)),
+      apvts (*this, nullptr, "HardTune", createParameterLayout())
+{
+    powerParam = apvts.getRawParameterValue ("power");
+    keyParam   = apvts.getRawParameterValue ("key");
+    scaleParam = apvts.getRawParameterValue ("scale");
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::createParameterLayout()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "power", 1 }, "On", true));
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "key", 1 }, "Key", keyNames, 0));
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "scale", 1 }, "Scale", scaleNames, 0));
+
+    return { params.begin(), params.end() };
+}
+
+bool HardTuneAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+    const auto& in  = layouts.getMainInputChannelSet();
+    const auto& out = layouts.getMainOutputChannelSet();
+
+    if (in != out)
+        return false;
+
+    return in == juce::AudioChannelSet::mono() || in == juce::AudioChannelSet::stereo();
+}
+
+void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
+{
+    detector.prepare (sampleRate);
+    shifter.prepare (sampleRate);
+
+    detectionHopSamples   = juce::jmax (64, (int) std::lround (sampleRate * 0.006));
+    samplesSinceDetection = detectionHopSamples; // detect on the first block
+    currentRatio          = 1.0;
+
+    setLatencySamples (shifter.getLatencySamples());
+}
+
+void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+                                           juce::MidiBuffer&)
+{
+    juce::ScopedNoDenormals noDenormals;
+
+    const int numSamples  = buffer.getNumSamples();
+    const int numChannels = buffer.getNumChannels();
+    if (numSamples == 0 || numChannels == 0)
+        return;
+
+    float* channel = buffer.getWritePointer (0);
+
+    // The detector always sees the dry input, on or off, so the pitch
+    // readout works and re-engaging is instant.
+    detector.push (channel, numSamples);
+
+    const bool on = powerParam->load() > 0.5f;
+    if (! on)
+    {
+        for (int i = 0; i < numSamples; ++i)
+            shifter.skipSample (channel[i]);
+
+        detectedHz.store (0.0f);
+        targetHz.store (0.0f);
+        return; // dry signal passes through untouched
+    }
+
+    samplesSinceDetection += numSamples;
+    if (samplesSinceDetection >= detectionHopSamples)
+    {
+        samplesSinceDetection = 0;
+
+        const auto result = detector.detect();
+        if (result.voiced)
+        {
+            quantizer.set ((int) keyParam->load(),
+                           (hardtune::Scale) (int) scaleParam->load());
+
+            const float target = quantizer.snapFrequencyHz (result.frequencyHz);
+            currentRatio = (double) target / (double) result.frequencyHz;
+
+            detectedHz.store (result.frequencyHz);
+            targetHz.store (target);
+        }
+        else
+        {
+            currentRatio = 1.0;
+            detectedHz.store (0.0f);
+            targetHz.store (0.0f);
+        }
+
+        // Zero glide: the new ratio lands mid-buffer, all at once.
+        shifter.setRatio (currentRatio);
+    }
+
+    for (int i = 0; i < numSamples; ++i)
+        channel[i] = shifter.processSample (channel[i]);
+
+    for (int ch = 1; ch < numChannels; ++ch)
+        buffer.copyFrom (ch, 0, channel, numSamples);
+}
+
+void HardTuneAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    if (auto xml = apvts.copyState().createXml())
+        copyXmlToBinary (*xml, destData);
+}
+
+void HardTuneAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    if (auto xml = getXmlFromBinary (data, sizeInBytes))
+        if (xml->hasTagName (apvts.state.getType()))
+            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+}
+
+juce::AudioProcessorEditor* HardTuneAudioProcessor::createEditor()
+{
+    return new HardTuneAudioProcessorEditor (*this);
+}
+
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new HardTuneAudioProcessor();
+}
