@@ -23,10 +23,38 @@ melodic rap — not a natural-sounding corrector.
 Explicitly **not** in v1: speed knob, formant toggle, wet/dry mix for the
 tuner itself.
 
+## Prebuilt plugins (drag and drop into your DAW)
+
+Every push builds the plugins on real macOS, Windows and Linux runners via
+GitHub Actions. To grab them: repo → **Actions** → latest **Build plugins**
+run → **Artifacts**:
+
+| Artifact | Contains |
+| --- | --- |
+| `HardTune-macOS` | `HardTune-AU-macOS.zip` (Logic Pro) + `HardTune-VST3-macOS.zip` |
+| `HardTune-Windows` | `HardTune-VST3-Windows.zip` |
+| `HardTune-Linux` | `HardTune-VST3-Linux.zip` |
+
+On a Mac, unzip and drop:
+
+- `HardTune.component` → `~/Library/Audio/Plug-Ins/Components/`
+- `HardTune.vst3` → `~/Library/Audio/Plug-Ins/VST3/`
+
+The CI bundles are ad-hoc signed, not notarised, so macOS quarantines
+downloaded copies. After copying them into place, clear the flag once:
+
+```sh
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/HardTune.component
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/HardTune.vst3
+```
+
+Then restart Logic (Settings → Plug-in Manager → Reset & Rescan if needed).
+
 ## Building
 
 Requires CMake ≥ 3.22 and a C++17 compiler. JUCE 8.0.8 is fetched
-automatically at configure time.
+automatically at configure time. Built plugins are copied into your user
+plugin folders automatically (disable with `-DHARDTUNE_COPY_PLUGIN=OFF`).
 
 ### macOS (AU + VST3, for Logic Pro)
 

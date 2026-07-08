@@ -21,6 +21,10 @@ FetchContent_MakeAvailable(JUCE)
 # ------------------------------------------------------------------
 # Plugin target
 # ------------------------------------------------------------------
+# ON for local dev convenience (plugins land straight in the user's plugin
+# folders); CI turns it OFF and ships the bundles as artifacts instead.
+option(HARDTUNE_COPY_PLUGIN "Copy built plugins into the system plugin folders" ON)
+
 juce_add_plugin(HardTune
     PRODUCT_NAME                "HardTune"
     COMPANY_NAME                "Belize2026"
@@ -33,7 +37,7 @@ juce_add_plugin(HardTune
     NEEDS_MIDI_OUTPUT           FALSE
     IS_MIDI_EFFECT              FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
-    COPY_PLUGIN_AFTER_BUILD     TRUE
+    COPY_PLUGIN_AFTER_BUILD     ${HARDTUNE_COPY_PLUGIN}
     MICROPHONE_PERMISSION_ENABLED TRUE
     MICROPHONE_PERMISSION_TEXT  "HardTune needs audio input for the standalone app."
     VST3_CATEGORIES             "Fx" "Pitch Shift"

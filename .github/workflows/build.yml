@@ -1,0 +1,75 @@
+name: Build plugins
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-14
+          - name: Windows
+            os: windows-2022
+          - name: Linux
+            os: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libx11-dev libxext-dev libxrandr-dev \
+            libxcursor-dev libxinerama-dev libfreetype6-dev libfontconfig1-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DHARDTUNE_COPY_PLUGIN=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Run DSP tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      # Ad-hoc signature so the bundles load on Apple-silicon Macs.
+      - name: Codesign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --force --deep -s - build/HardTune_artefacts/Release/AU/HardTune.component
+          codesign --force --deep -s - build/HardTune_artefacts/Release/VST3/HardTune.vst3
+
+      # Zip the bundles ourselves: upload-artifact does not preserve the
+      # executable bits that .component/.vst3 bundles need on macOS/Linux.
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir dist
+          ditto -c -k --keepParent build/HardTune_artefacts/Release/AU/HardTune.component dist/HardTune-AU-macOS.zip
+          ditto -c -k --keepParent build/HardTune_artefacts/Release/VST3/HardTune.vst3 dist/HardTune-VST3-macOS.zip
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir dist
+          Compress-Archive -Path build/HardTune_artefacts/Release/VST3/HardTune.vst3 -DestinationPath dist/HardTune-VST3-Windows.zip
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir dist
+          cd build/HardTune_artefacts/Release/VST3
+          zip -r "$GITHUB_WORKSPACE/dist/HardTune-VST3-Linux.zip" HardTune.vst3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HardTune-${{ matrix.name }}
+          path: dist/
+          if-no-files-found: error
