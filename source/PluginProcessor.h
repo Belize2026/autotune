@@ -2,6 +2,8 @@
 
 #include <juce_audio_utils/juce_audio_utils.h>
 
+#include "dsp/Echo.h"
+#include "dsp/FormantShifter.h"
 #include "dsp/PitchDetector.h"
 #include "dsp/PitchShifter.h"
 #include "dsp/Quantizer.h"
@@ -26,7 +28,9 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override
     {
-        return (reverbParam != nullptr && reverbParam->load() > 0.0f) ? 3.0 : 0.0;
+        const bool hasTail = (reverbParam != nullptr && reverbParam->load() > 0.0f)
+                          || (echoParam != nullptr && echoParam->load() > 0.0f);
+        return hasTail ? 3.0 : 0.0;
     }
 
     int getNumPrograms() override { return 1; }
@@ -47,20 +51,29 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    void applyReverb (juce::AudioBuffer<float>& buffer, bool tuneWasApplied);
+    void applyFormantStage (float* channel, int numSamples);
+    void applyPostEffects (juce::AudioBuffer<float>& buffer, bool tuneWasApplied);
 
     juce::AudioProcessorValueTreeState apvts;
-    std::atomic<float>* powerParam  = nullptr;
-    std::atomic<float>* keyParam    = nullptr;
-    std::atomic<float>* scaleParam  = nullptr;
-    std::atomic<float>* reverbParam = nullptr;
+    std::atomic<float>* powerParam   = nullptr;
+    std::atomic<float>* keyParam     = nullptr;
+    std::atomic<float>* scaleParam   = nullptr;
+    std::atomic<float>* formantParam = nullptr;
+    std::atomic<float>* dualParam    = nullptr;
+    std::atomic<float>* dualMixParam = nullptr;
+    std::atomic<float>* echoParam    = nullptr;
+    std::atomic<float>* reverbParam  = nullptr;
 
-    hardtune::PitchDetector detector;
-    hardtune::Quantizer     quantizer;
-    hardtune::PitchShifter  shifter;
+    hardtune::PitchDetector  detector;
+    hardtune::Quantizer      quantizer;
+    hardtune::PitchShifter   shifter;
+    hardtune::FormantShifter formantShifter;
+    hardtune::Echo           echo;
 
     juce::Reverb reverb;
     bool reverbWasActive = false;
+    bool echoWasActive   = false;
+    double lastTargetHz  = 0.0;
 
     // Re-detect at most every `detectionHopSamples` samples so tiny host
     // block sizes don't multiply the analysis cost.

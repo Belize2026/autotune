@@ -2,11 +2,6 @@
 
 namespace
 {
-constexpr auto backgroundColour = 0xff16161c;
-constexpr auto panelColour      = 0xff20202a;
-constexpr auto accentColour     = 0xffff2d78;
-constexpr auto offColour        = 0xff3a3a46;
-
 juce::String noteNameForHz (float hz)
 {
     static const char* names[] = { "C", "C#", "D", "D#", "E", "F",
@@ -19,123 +14,159 @@ juce::String noteNameForHz (float hz)
 HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcessor& p)
     : AudioProcessorEditor (p), processor (p)
 {
+    setLookAndFeel (&lookAndFeel);
     auto& apvts = processor.getValueTreeState();
 
     titleLabel.setText ("HARD TUNE", juce::dontSendNotification);
-    titleLabel.setFont (juce::FontOptions (30.0f, juce::Font::bold));
-    titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
-    titleLabel.setJustificationType (juce::Justification::centred);
+    titleLabel.setFont (juce::Font (juce::FontOptions (26.0f, juce::Font::bold)));
+    titleLabel.setColour (juce::Label::textColourId, theme::text);
     addAndMakeVisible (titleLabel);
 
     powerButton.setClickingTogglesState (true);
-    powerButton.setColour (juce::TextButton::buttonColourId, juce::Colour (offColour));
-    powerButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (accentColour));
-    powerButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    powerButton.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
     addAndMakeVisible (powerButton);
     powerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         apvts, "power", powerButton);
 
-    auto setupCombo = [this, &apvts] (juce::ComboBox& box, juce::Label& label,
-                                      const juce::String& text, const juce::String& paramID,
-                                      auto& attachment)
+    dualButton.setClickingTogglesState (true);
+    addAndMakeVisible (dualButton);
+    dualAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        apvts, "dual", dualButton);
+
+    addAndMakeVisible (display);
+
+    auto setupLabel = [this] (juce::Label& label, const juce::String& text)
     {
         label.setText (text, juce::dontSendNotification);
-        label.setFont (juce::FontOptions (14.0f, juce::Font::bold));
-        label.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.7f));
+        label.setFont (juce::Font (juce::FontOptions (11.0f, juce::Font::bold)));
+        label.setColour (juce::Label::textColourId, theme::textDim);
+        label.setJustificationType (juce::Justification::centred);
         addAndMakeVisible (label);
+    };
 
+    auto setupCombo = [this, &apvts] (juce::ComboBox& box, const juce::String& paramID,
+                                      auto& attachment)
+    {
         if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (paramID)))
             box.addItemList (choice->choices, 1);
-
-        box.setColour (juce::ComboBox::backgroundColourId, juce::Colour (panelColour));
-        box.setColour (juce::ComboBox::outlineColourId, juce::Colours::white.withAlpha (0.15f));
         addAndMakeVisible (box);
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
             apvts, paramID, box);
     };
 
-    setupCombo (keyBox, keyLabel, "KEY", "key", keyAttachment);
-    setupCombo (scaleBox, scaleLabel, "SCALE", "scale", scaleAttachment);
+    auto setupDial = [this, &apvts] (juce::Slider& dial, const juce::String& paramID,
+                                     const juce::String& suffix, auto& attachment)
+    {
+        dial.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+        dial.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 68, 16);
+        dial.setTextValueSuffix (suffix);
+        addAndMakeVisible (dial);
+        attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+            apvts, paramID, dial);
+    };
 
-    reverbLabel.setText ("REVERB", juce::dontSendNotification);
-    reverbLabel.setFont (juce::FontOptions (14.0f, juce::Font::bold));
-    reverbLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.7f));
-    reverbLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (reverbLabel);
+    setupLabel (keyLabel, "KEY");
+    setupCombo (keyBox, "key", keyAttachment);
+    setupLabel (scaleLabel, "SCALE");
+    setupCombo (scaleBox, "scale", scaleAttachment);
+    setupLabel (dualLabel, "DUAL VOCALS");
 
-    reverbDial.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    reverbDial.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
-    reverbDial.setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (accentColour));
-    reverbDial.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (offColour));
-    reverbDial.setColour (juce::Slider::thumbColourId, juce::Colours::white);
-    reverbDial.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.7f));
-    reverbDial.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    reverbDial.setTextValueSuffix (" %");
-    addAndMakeVisible (reverbDial);
-    reverbAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-        apvts, "reverb", reverbDial);
+    setupLabel (formantLabel, "FORMANT");
+    setupDial (formantDial, "formant", " st", formantAttachment);
+    setupLabel (dualMixLabel, "DUAL MIX");
+    setupDial (dualMixDial, "dualmix", " %", dualMixAttachment);
+    setupLabel (echoLabel, "ECHO");
+    setupDial (echoDial, "echo", " %", echoAttachment);
+    setupLabel (reverbLabel, "REVERB");
+    setupDial (reverbDial, "reverb", " %", reverbAttachment);
 
-    readoutLabel.setFont (juce::FontOptions (15.0f));
-    readoutLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
-    readoutLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (readoutLabel);
-
-    setSize (420, 420);
+    setSize (560, 478);
     startTimerHz (30);
+}
+
+HardTuneAudioProcessorEditor::~HardTuneAudioProcessorEditor()
+{
+    setLookAndFeel (nullptr);
 }
 
 void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (backgroundColour));
+    g.fillAll (theme::background);
 
-    g.setColour (juce::Colour (panelColour));
-    g.fillRoundedRectangle (getLocalBounds().reduced (12).toFloat(), 10.0f);
-
-    g.setColour (juce::Colours::white.withAlpha (0.35f));
-    g.setFont (juce::FontOptions (11.0f));
+    g.setColour (theme::textDim.withAlpha (0.5f));
+    g.setFont (juce::Font (juce::FontOptions (10.5f)));
     g.drawText ("zero-glide hard pitch snap  |  v0.1",
-                getLocalBounds().removeFromBottom (26),
+                getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
 
 void HardTuneAudioProcessorEditor::resized()
 {
-    auto area = getLocalBounds().reduced (24);
+    auto area = getLocalBounds().reduced (20);
 
-    titleLabel.setBounds (area.removeFromTop (44));
-    area.removeFromTop (8);
-
-    powerButton.setBounds (area.removeFromTop (72).withSizeKeepingCentre (180, 64));
-    area.removeFromTop (16);
-
-    auto row = area.removeFromTop (58);
-    auto keyArea = row.removeFromLeft (row.getWidth() / 2).reduced (8, 0);
-    auto scaleArea = row.reduced (8, 0);
-
-    keyLabel.setBounds (keyArea.removeFromTop (18));
-    keyBox.setBounds (keyArea.removeFromTop (30));
-    scaleLabel.setBounds (scaleArea.removeFromTop (18));
-    scaleBox.setBounds (scaleArea.removeFromTop (30));
+    auto header = area.removeFromTop (36);
+    powerButton.setBounds (header.removeFromRight (96).withSizeKeepingCentre (96, 32));
+    titleLabel.setBounds (header);
 
     area.removeFromTop (12);
-    reverbLabel.setBounds (area.removeFromTop (18));
-    reverbDial.setBounds (area.removeFromTop (100).withSizeKeepingCentre (110, 100));
+    display.setBounds (area.removeFromTop (128));
+    area.removeFromTop (14);
 
-    area.removeFromTop (8);
-    readoutLabel.setBounds (area.removeFromTop (24));
+    // Key / Scale / Dual toggle row.
+    auto row = area.removeFromTop (50);
+    const int colW = row.getWidth() / 3;
+    auto keyArea = row.removeFromLeft (colW).reduced (6, 0);
+    auto scaleArea = row.removeFromLeft (colW).reduced (6, 0);
+    auto dualArea = row.reduced (6, 0);
+
+    keyLabel.setBounds (keyArea.removeFromTop (16));
+    keyBox.setBounds (keyArea.removeFromTop (30));
+    scaleLabel.setBounds (scaleArea.removeFromTop (16));
+    scaleBox.setBounds (scaleArea.removeFromTop (30));
+    dualLabel.setBounds (dualArea.removeFromTop (16));
+    dualButton.setBounds (dualArea.removeFromTop (30).withSizeKeepingCentre (84, 28));
+
+    area.removeFromTop (16);
+
+    // Dial row: Formant / Dual Mix / Echo / Reverb.
+    auto dials = area.removeFromTop (150);
+    const int dialW = dials.getWidth() / 4;
+
+    auto layoutDial = [&dials, dialW] (juce::Label& label, juce::Slider& dial)
+    {
+        auto cell = dials.removeFromLeft (dialW).reduced (4, 0);
+        label.setBounds (cell.removeFromTop (16));
+        dial.setBounds (cell);
+    };
+
+    layoutDial (formantLabel, formantDial);
+    layoutDial (dualMixLabel, dualMixDial);
+    layoutDial (echoLabel, echoDial);
+    layoutDial (reverbLabel, reverbDial);
 }
 
 void HardTuneAudioProcessorEditor::timerCallback()
 {
     powerButton.setButtonText (powerButton.getToggleState() ? "ON" : "OFF");
+    dualButton.setButtonText (dualButton.getToggleState() ? "ON" : "OFF");
+    dualMixDial.setEnabled (dualButton.getToggleState());
+    dualMixLabel.setAlpha (dualButton.getToggleState() ? 1.0f : 0.35f);
 
     const float detected = processor.detectedHz.load();
     const float target   = processor.targetHz.load();
 
     if (detected > 0.0f && target > 0.0f)
-        readoutLabel.setText (noteNameForHz (detected) + "  ->  " + noteNameForHz (target),
-                              juce::dontSendNotification);
+    {
+        const float cents = 1200.0f * std::log2 (target / detected);
+        display.push (cents, true);
+
+        juce::String sign (cents >= 0.5f ? "+" : (cents <= -0.5f ? "-" : ""));
+        display.setReadout (noteNameForHz (detected) + "  >  " + noteNameForHz (target)
+                            + "   " + sign + juce::String (std::abs ((int) std::lround (cents)))
+                            + " ct");
+    }
     else
-        readoutLabel.setText ("-", juce::dontSendNotification);
+    {
+        display.push (0.0f, false);
+        display.setReadout (powerButton.getToggleState() ? juce::String() : "BYPASSED");
+    }
 }

@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "dsp/Echo.h"
+#include "dsp/FormantShifter.h"
 #include "dsp/PitchDetector.h"
 #include "dsp/PitchShifter.h"
 #include "dsp/Quantizer.h"
@@ -148,6 +150,68 @@ void testEndToEnd()
     check (peak > 0.25f && peak < 0.75f, "output level sane",
            "peak " + std::to_string (peak));
 }
+void testFormantShifter()
+{
+    std::printf ("Formant shifter (pitch must stay put):\n");
+
+    const double sampleRate = 44100.0;
+    const double freq = 220.0;
+
+    for (double ratio : { 0.75, 1.0, 1.5 })
+    {
+        hardtune::FormantShifter shifter;
+        shifter.prepare (sampleRate);
+        shifter.setFundamental (freq);
+        shifter.setRatio (ratio);
+
+        auto sine = makeSine (freq, sampleRate, 0.6);
+        std::vector<float> out (sine.size(), 0.0f);
+        for (size_t i = 0; i < sine.size(); ++i)
+            out[i] = shifter.processSample (sine[i]);
+
+        hardtune::PitchDetector verifier;
+        verifier.prepare (sampleRate);
+        verifier.push (out.data() + out.size() / 2, (int) (out.size() / 2));
+        const auto result = verifier.detect();
+
+        const double error = result.voiced ? std::abs (result.frequencyHz - freq) / freq : 1.0;
+        check (result.voiced && error < 0.02,
+               "ratio " + std::to_string (ratio) + " keeps 220 Hz",
+               "got " + std::to_string (result.frequencyHz) + " Hz");
+
+        float peak = 0.0f;
+        for (size_t i = out.size() / 2; i < out.size(); ++i)
+            peak = std::max (peak, std::abs (out[i]));
+        check (peak > 0.1f && peak < 1.0f,
+               "ratio " + std::to_string (ratio) + " level sane",
+               "peak " + std::to_string (peak));
+    }
+}
+
+void testEcho()
+{
+    std::printf ("Echo:\n");
+
+    const double sampleRate = 44100.0;
+    hardtune::Echo echo;
+    echo.prepare (sampleRate);
+
+    // An impulse must come back at the fixed delay time, scaled by the wet amount.
+    const int delaySamples = (int) std::lround (sampleRate * 0.375);
+    std::vector<float> signal ((size_t) delaySamples * 2, 0.0f);
+    signal[0] = 1.0f;
+    echo.processMono (signal.data(), (int) signal.size(), 0.5f);
+
+    check (std::abs (signal[0] - 1.0f) < 1.0e-6f, "dry impulse unchanged");
+    check (std::abs (signal[(size_t) delaySamples] - 0.5f) < 1.0e-3f,
+           "first repeat at 375 ms, wet-scaled",
+           "got " + std::to_string (signal[(size_t) delaySamples]));
+
+    float between = 0.0f;
+    for (int i = 1; i < delaySamples; ++i)
+        between = std::max (between, std::abs (signal[(size_t) i]));
+    check (between < 1.0e-6f, "silence between repeats");
+}
 } // namespace
 
 int main()
@@ -156,6 +220,8 @@ int main()
     testPitchDetection();
     testQuantizer();
     testEndToEnd();
+    testFormantShifter();
+    testEcho();
 
     std::printf ("==================\n%s\n", failures == 0 ? "All tests passed." : "TESTS FAILED");
     return failures == 0 ? 0 : 1;

@@ -14,10 +14,14 @@ HardTuneAudioProcessor::HardTuneAudioProcessor()
                           .withOutput ("Output", juce::AudioChannelSet::mono(), true)),
       apvts (*this, nullptr, "HardTune", createParameterLayout())
 {
-    powerParam  = apvts.getRawParameterValue ("power");
-    keyParam    = apvts.getRawParameterValue ("key");
-    scaleParam  = apvts.getRawParameterValue ("scale");
-    reverbParam = apvts.getRawParameterValue ("reverb");
+    powerParam   = apvts.getRawParameterValue ("power");
+    keyParam     = apvts.getRawParameterValue ("key");
+    scaleParam   = apvts.getRawParameterValue ("scale");
+    formantParam = apvts.getRawParameterValue ("formant");
+    dualParam    = apvts.getRawParameterValue ("dual");
+    dualMixParam = apvts.getRawParameterValue ("dualmix");
+    echoParam    = apvts.getRawParameterValue ("echo");
+    reverbParam  = apvts.getRawParameterValue ("reverb");
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::createParameterLayout()
@@ -30,6 +34,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::crea
         juce::ParameterID { "key", 1 }, "Key", keyNames, 0));
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { "scale", 1 }, "Scale", scaleNames, 0));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "formant", 1 }, "Formant",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("st")));
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "dual", 1 }, "Dual Vocals", false));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "dualmix", 1 }, "Dual Mix",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 50.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "echo", 1 }, "Echo",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "reverb", 1 }, "Reverb",
         juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
@@ -58,6 +76,11 @@ void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
     samplesSinceDetection = detectionHopSamples; // detect on the first block
     currentRatio          = 1.0;
 
+    formantShifter.prepare (sampleRate);
+    echo.prepare (sampleRate);
+    echoWasActive = false;
+    lastTargetHz  = 0.0;
+
     reverb.setSampleRate (sampleRate);
     reverb.reset();
     reverbWasActive = false;
@@ -85,13 +108,16 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (! on)
     {
         for (int i = 0; i < numSamples; ++i)
+        {
             shifter.skipSample (channel[i]);
+            formantShifter.skipSample (channel[i]);
+        }
 
         detectedHz.store (0.0f);
         targetHz.store (0.0f);
 
-        // The tune chain passes dry, but the reverb dial stays independent.
-        applyReverb (buffer, false);
+        // The tune chain passes dry, but echo and reverb stay independent.
+        applyPostEffects (buffer, false);
         return;
     }
 
@@ -108,6 +134,7 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
             const float target = quantizer.snapFrequencyHz (result.frequencyHz);
             currentRatio = (double) target / (double) result.frequencyHz;
+            lastTargetHz = target;
 
             detectedHz.store (result.frequencyHz);
             targetHz.store (target);
@@ -126,14 +153,64 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (int i = 0; i < numSamples; ++i)
         channel[i] = shifter.processSample (channel[i]);
 
-    applyReverb (buffer, true);
+    applyFormantStage (channel, numSamples);
+    applyPostEffects (buffer, true);
 
     for (int ch = 1; ch < numChannels; ++ch)
         buffer.copyFrom (ch, 0, channel, numSamples);
 }
 
-void HardTuneAudioProcessor::applyReverb (juce::AudioBuffer<float>& buffer, bool tuneWasApplied)
+void HardTuneAudioProcessor::applyFormantStage (float* channel, int numSamples)
 {
+    const float formantSemitones = formantParam->load();
+    const bool  dual             = dualParam->load() > 0.5f;
+    const float dualMix          = dualMixParam->load() * 0.01f;
+
+    // Grains follow the note the tuned vocal is sitting on.
+    formantShifter.setFundamental (lastTargetHz);
+    formantShifter.setRatio (std::exp2 ((double) formantSemitones / 12.0));
+
+    if (dual)
+    {
+        // Main vocal stays on level; the formant-shifted double is blended
+        // in underneath with the mix dial.
+        for (int i = 0; i < numSamples; ++i)
+            channel[i] += dualMix * formantShifter.processSample (channel[i]);
+    }
+    else if (std::abs (formantSemitones) > 0.05f)
+    {
+        // Single-vocal mode: reshape the main vocal directly.
+        for (int i = 0; i < numSamples; ++i)
+            channel[i] = formantShifter.processSample (channel[i]);
+    }
+    else
+    {
+        for (int i = 0; i < numSamples; ++i)
+            formantShifter.skipSample (channel[i]);
+    }
+}
+
+void HardTuneAudioProcessor::applyPostEffects (juce::AudioBuffer<float>& buffer, bool tuneWasApplied)
+{
+    const int numSamples = buffer.getNumSamples();
+    const bool stereoDry = ! tuneWasApplied && buffer.getNumChannels() >= 2;
+
+    const float echoAmount = echoParam->load() * 0.01f;
+    if (echoAmount > 0.001f)
+    {
+        echoWasActive = true;
+        if (stereoDry)
+            echo.processStereo (buffer.getWritePointer (0), buffer.getWritePointer (1),
+                                numSamples, echoAmount * 0.85f);
+        else
+            echo.processMono (buffer.getWritePointer (0), numSamples, echoAmount * 0.85f);
+    }
+    else if (echoWasActive)
+    {
+        echo.reset();
+        echoWasActive = false;
+    }
+
     const float amount = reverbParam->load() * 0.01f;
 
     if (amount <= 0.001f)

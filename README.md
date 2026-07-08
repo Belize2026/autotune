@@ -14,14 +14,27 @@ melodic rap — not a natural-sounding corrector.
 - Time-domain pitch shifting (dual-tap crossfaded delay line), no formant
   preservation
 - Controls: On/Off, Key (C–B), Scale (Chromatic / Major / Minor / Minor
-  Pentatonic), Reverb dial
-- Reverb: a single rotary dial (0–100 %) after the tune chain. At 0 the
-  reverb is fully inactive; turning it up activates it and blends in the wet
-  signal. It works independently of the tune On/Off button, so the dry
-  bypass can still carry reverb.
+  Pentatonic), Formant dial, Dual Vocals toggle + Dual Mix dial, Echo dial,
+  Reverb dial
+- Formant shift: PSOLA-style pitch-synchronous granular processing driven by
+  the tuner's pitch tracking — reshapes the vocal character (±12 st) while
+  the tuned pitch stays put. Two modes:
+  - **Dual Vocals off** (default): the Formant dial reshapes the main vocal
+    directly.
+  - **Dual Vocals on**: the main vocal stays on level and a formant-shifted
+    double is layered underneath, blended with the Dual Mix dial.
+- Echo: a single rotary dial (0–100 %), fixed 375 ms feedback delay. At 0 it
+  is fully inactive; turning it up activates it.
+- Reverb: same dial-as-activator pattern (0–100 %) after the echo. Both work
+  independently of the tune On/Off button, so the dry bypass can still carry
+  space.
+- Live correction display: a scrolling trace of the correction being applied
+  (in cents, centre line = on pitch) plus the current detected → target note
+  readout, so you can see exactly what the tuner is doing.
 
-Explicitly **not** in v1: speed knob, formant toggle, wet/dry mix for the
-tuner itself.
+Signal chain: detect → quantise → shift → formant → echo → reverb.
+
+Explicitly **not** in v1: speed knob, wet/dry mix for the tuner itself.
 
 ## Prebuilt plugins (drag and drop into your DAW)
 
@@ -106,8 +119,11 @@ cmake --build build --target HardTuneDspTests
 | `source/dsp/PitchDetector.h` | YIN pitch detector (pure C++, header-only) |
 | `source/dsp/Quantizer.h` | Key/scale hard quantiser (pure C++) |
 | `source/dsp/PitchShifter.h` | Zero-glide delay-line pitch shifter (pure C++) |
-| `source/PluginProcessor.*` | JUCE processor: parameters + the detect/quantise/shift chain |
-| `source/PluginEditor.*` | Single-window UI: power button, key + scale dropdowns, reverb dial, live note readout |
+| `source/dsp/FormantShifter.h` | PSOLA-style formant shifter (pure C++) |
+| `source/dsp/Echo.h` | Fixed-time feedback echo (pure C++) |
+| `source/PluginProcessor.*` | JUCE processor: parameters + the full effect chain |
+| `source/PluginEditor.*` | Single-window UI: correction display, power/dual buttons, dropdowns, dials |
+| `source/ui/*.h` | LookAndFeel (flat dark theme) + live correction display component |
 | `tests/DspTests.cpp` | Headless DSP tests |
 
 The DSP headers have no JUCE dependency on purpose, so the core sound can be
