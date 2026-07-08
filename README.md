@@ -36,17 +36,33 @@ Signal chain: detect → quantise → shift → formant → echo → reverb.
 
 Explicitly **not** in v1: speed knob, wet/dry mix for the tuner itself.
 
-## Prebuilt plugins (drag and drop into your DAW)
+## Installers (recommended)
 
-Every push builds the plugins on real macOS, Windows and Linux runners via
-GitHub Actions. To grab them: repo → **Actions** → latest **Build plugins**
-run → **Artifacts**:
+Every push builds the plugins **and installers** on real macOS, Windows and
+Linux runners via GitHub Actions. To grab them: repo → **Actions** → latest
+**Build plugins** run → **Artifacts**.
+
+| Artifact | Contains |
+| --- | --- |
+| `HardTune-Installer-macOS` | `HardTune-Installer-macOS.pkg` — installs the AU (Logic Pro) and VST3 into `/Library/Audio/Plug-Ins` |
+| `HardTune-Installer-Windows` | `HardTune-Installer-Windows.exe` — installs the VST3 into `C:\Program Files\Common Files\VST3` |
+
+Run the installer, rescan plugins in your DAW, done. Files installed by the
+macOS `.pkg` are not quarantined, so no `xattr` step is needed. The
+installers are unsigned, so the OS will warn on first launch: on macOS
+right-click the `.pkg` → Open (or allow it under System Settings → Privacy &
+Security); on Windows click "More info" → "Run anyway".
+
+## Prebuilt plugins (manual drag and drop)
+
+The same Actions run also uploads the raw plugin bundles:
 
 | Artifact | Contains |
 | --- | --- |
 | `HardTune-macOS` | `HardTune-AU-macOS.zip` (Logic Pro) + `HardTune-VST3-macOS.zip` |
 | `HardTune-Windows` | `HardTune-VST3-Windows.zip` |
 | `HardTune-Linux` | `HardTune-VST3-Linux.zip` |
+| `HardTune.vst3` | The raw Windows VST3 bundle, uploaded on every push |
 
 On a Mac, unzip and drop:
 

@@ -73,3 +73,47 @@ jobs:
           name: HardTune-${{ matrix.name }}
           path: dist/
           if-no-files-found: error
+
+      # The raw Windows VST3 bundle as its own artifact, per-push.
+      - name: Upload Windows VST3 bundle
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HardTune.vst3
+          path: build/HardTune_artefacts/Release/VST3/HardTune.vst3
+          if-no-files-found: error
+
+      # ----------------------------------------------------------------
+      # Installers: macOS .pkg (AU + VST3 into /Library/Audio/Plug-Ins)
+      # and Windows Inno Setup .exe (VST3 into Common Files\VST3).
+      # ----------------------------------------------------------------
+      - name: Build installer (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir pkg-components dist-installer
+          pkgbuild --component build/HardTune_artefacts/Release/AU/HardTune.component \
+                   --install-location /Library/Audio/Plug-Ins/Components \
+                   --identifier com.belize2026.hardtune.au \
+                   --version 0.1.0 \
+                   pkg-components/HardTune-AU.pkg
+          pkgbuild --component build/HardTune_artefacts/Release/VST3/HardTune.vst3 \
+                   --install-location /Library/Audio/Plug-Ins/VST3 \
+                   --identifier com.belize2026.hardtune.vst3 \
+                   --version 0.1.0 \
+                   pkg-components/HardTune-VST3.pkg
+          productbuild --package pkg-components/HardTune-AU.pkg \
+                       --package pkg-components/HardTune-VST3.pkg \
+                       dist-installer/HardTune-Installer-macOS.pkg
+
+      - name: Build installer (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /O"dist-installer" installer\windows\HardTune.iss
+
+      - name: Upload installer
+        if: runner.os != 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HardTune-Installer-${{ matrix.name }}
+          path: dist-installer/
+          if-no-files-found: error
