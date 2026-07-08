@@ -43,6 +43,7 @@ public:
             case Scale::minor:           enable (minorIntervals, 7);     break;
             case Scale::minorPentatonic: enable (minorPentIntervals, 5); break;
             case Scale::chromatic:
+            case Scale::numScales:
             default:
                 for (bool& a : allowed)
                     a = true;
