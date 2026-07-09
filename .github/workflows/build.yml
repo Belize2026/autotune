@@ -5,6 +5,11 @@ on:
     branches: ["**"]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Publish a release with this tag (e.g. v0.1.0); leave empty to just build"
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -121,13 +126,14 @@ jobs:
           if-no-files-found: error
 
   # ------------------------------------------------------------------
-  # Pushing a version tag (v0.1.0, v0.2.0, ...) publishes the installers
-  # and plugin bundles to the repo's Releases page, giving permanent
-  # download links that don't need a GitHub login and never expire.
+  # Pushing a version tag (v0.1.0, v0.2.0, ...) — or manually running the
+  # workflow with a release_tag input — publishes the installers and plugin
+  # bundles to the repo's Releases page, giving permanent download links
+  # that don't need a GitHub login and never expire.
   # ------------------------------------------------------------------
   release:
     name: Publish release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: build
     runs-on: ubuntu-24.04
     permissions:
@@ -149,6 +155,8 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: release/*
           fail_on_unmatched_files: true
           generate_release_notes: true
