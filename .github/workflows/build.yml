@@ -2,6 +2,8 @@ name: Build plugins
 
 on:
   push:
+    branches: ["**"]
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
@@ -117,3 +119,51 @@ jobs:
           name: HardTune-Installer-${{ matrix.name }}
           path: dist-installer/
           if-no-files-found: error
+
+  # ------------------------------------------------------------------
+  # Pushing a version tag (v0.1.0, v0.2.0, ...) publishes the installers
+  # and plugin bundles to the repo's Releases page, giving permanent
+  # download links that don't need a GitHub login and never expire.
+  # ------------------------------------------------------------------
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release files
+        run: |
+          mkdir release
+          cp artifacts/HardTune-Installer-macOS/HardTune-Installer-macOS.pkg release/
+          cp artifacts/HardTune-Installer-Windows/HardTune-Installer-Windows.exe release/
+          cp artifacts/HardTune-macOS/*.zip release/
+          cp artifacts/HardTune-Windows/*.zip release/
+          cp artifacts/HardTune-Linux/*.zip release/
+          ls -l release
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            ## Installing
+
+            **macOS (Logic Pro etc.):** download `HardTune-Installer-macOS.pkg`,
+            right-click it → Open (it is unsigned), and follow the installer.
+            It puts the AU and VST3 into `/Library/Audio/Plug-Ins`. Then rescan
+            your plugins (Logic: Settings → Plug-in Manager).
+
+            **Windows:** download `HardTune-Installer-Windows.exe`. If SmartScreen
+            appears, click "More info" → "Run anyway", then follow the installer.
+            It puts the VST3 into `C:\Program Files\Common Files\VST3`. Then
+            rescan your plugins in your DAW.
+
+            The zip files are the raw plugin bundles for manual installation —
+            see the README for where to copy them.

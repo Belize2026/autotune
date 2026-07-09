@@ -4,6 +4,57 @@ A VST3/AU plugin that does one thing well: **instant, hard pitch snapping with
 no glide**. This is the extreme robotic autotune sound used in hyperpop and
 melodic rap — not a natural-sounding corrector.
 
+## Download & install
+
+Grab the installer for your OS from the
+**[latest release](https://github.com/Belize2026/autotune/releases/latest)**
+(no GitHub account needed):
+
+- **macOS**: [`HardTune-Installer-macOS.pkg`](https://github.com/Belize2026/autotune/releases/latest/download/HardTune-Installer-macOS.pkg)
+- **Windows**: [`HardTune-Installer-Windows.exe`](https://github.com/Belize2026/autotune/releases/latest/download/HardTune-Installer-Windows.exe)
+
+### macOS (Logic Pro, Ableton, etc.)
+
+1. Download the `.pkg` above.
+2. **Right-click it → Open** (double-clicking gets blocked because the
+   installer is unsigned; right-click → Open shows an "Open" button instead).
+   If macOS still refuses: System Settings → Privacy & Security → scroll down
+   → **Open Anyway**.
+3. Follow the installer (it asks for your password). It installs:
+   - `HardTune.component` (AU, what Logic uses) → `/Library/Audio/Plug-Ins/Components`
+   - `HardTune.vst3` → `/Library/Audio/Plug-Ins/VST3`
+4. Open your DAW. In Logic the plugin appears on a channel strip under
+   **Audio FX → Audio Units → Belize2026 → HardTune**. If it doesn't show up:
+   Logic Pro → Settings → Plug-in Manager → **Reset & Rescan Selection**,
+   then restart Logic.
+
+### Windows
+
+1. Download the `.exe` above.
+2. If SmartScreen pops up, click **More info → Run anyway** (the installer is
+   unsigned).
+3. Follow the installer. It installs `HardTune.vst3` into
+   `C:\Program Files\Common Files\VST3` — the standard folder every VST3 DAW
+   scans.
+4. Rescan plugins in your DAW (or just restart it). HardTune appears under
+   Belize2026.
+
+### Uninstalling
+
+- **macOS**: delete `HardTune.component` and `HardTune.vst3` from the two
+  folders listed above.
+- **Windows**: Settings → Apps → Installed apps → HardTune → Uninstall.
+
+### What's in this repository
+
+This repo contains the **source code** — the compiled plugins are *not*
+stored in git. GitHub Actions builds them on every push, and pushing a
+version tag (e.g. `v0.1.0`) publishes the installers to the
+[Releases page](https://github.com/Belize2026/autotune/releases), which is
+where downloads live permanently. So: code lives here, downloadable
+binaries live under Releases, and per-commit dev builds live under Actions
+artifacts.
+
 ## v1 scope
 
 - Mono vocal input expected
@@ -36,41 +87,22 @@ Signal chain: detect → quantise → shift → formant → echo → reverb.
 
 Explicitly **not** in v1: speed knob, wet/dry mix for the tuner itself.
 
-## Installers (recommended)
+## Manual install (no installer)
 
-Every push builds the plugins **and installers** on real macOS, Windows and
-Linux runners via GitHub Actions. To grab them: repo → **Actions** → latest
-**Build plugins** run → **Artifacts**.
-
-| Artifact | Contains |
-| --- | --- |
-| `HardTune-Installer-macOS` | `HardTune-Installer-macOS.pkg` — installs the AU (Logic Pro) and VST3 into `/Library/Audio/Plug-Ins` |
-| `HardTune-Installer-Windows` | `HardTune-Installer-Windows.exe` — installs the VST3 into `C:\Program Files\Common Files\VST3` |
-
-Run the installer, rescan plugins in your DAW, done. Files installed by the
-macOS `.pkg` are not quarantined, so no `xattr` step is needed. The
-installers are unsigned, so the OS will warn on first launch: on macOS
-right-click the `.pkg` → Open (or allow it under System Settings → Privacy &
-Security); on Windows click "More info" → "Run anyway".
-
-## Prebuilt plugins (manual drag and drop)
-
-The same Actions run also uploads the raw plugin bundles:
-
-| Artifact | Contains |
-| --- | --- |
-| `HardTune-macOS` | `HardTune-AU-macOS.zip` (Logic Pro) + `HardTune-VST3-macOS.zip` |
-| `HardTune-Windows` | `HardTune-VST3-Windows.zip` |
-| `HardTune-Linux` | `HardTune-VST3-Linux.zip` |
-| `HardTune.vst3` | The raw Windows VST3 bundle, uploaded on every push |
+Each release also carries the raw plugin bundles as zips
+(`HardTune-AU-macOS.zip`, `HardTune-VST3-macOS.zip`,
+`HardTune-VST3-Windows.zip`, `HardTune-VST3-Linux.zip`) if you'd rather
+place the files yourself.
 
 On a Mac, unzip and drop:
 
 - `HardTune.component` → `~/Library/Audio/Plug-Ins/Components/`
 - `HardTune.vst3` → `~/Library/Audio/Plug-Ins/VST3/`
 
-The CI bundles are ad-hoc signed, not notarised, so macOS quarantines
-downloaded copies. After copying them into place, clear the flag once:
+Manually downloaded bundles get quarantined by macOS (they are ad-hoc
+signed, not notarised — another reason the `.pkg` installer is the easier
+route, since installed files skip quarantine). After copying them into
+place, clear the flag once:
 
 ```sh
 xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/HardTune.component
@@ -78,6 +110,17 @@ xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/HardTune.vst3
 ```
 
 Then restart Logic (Settings → Plug-in Manager → Reset & Rescan if needed).
+
+On Windows, unzip and drop `HardTune.vst3` into
+`C:\Program Files\Common Files\VST3`.
+
+## Dev builds (every push)
+
+Every push also builds everything via GitHub Actions: repo → **Actions** →
+latest **Build plugins** run → **Artifacts** (requires being signed in to
+GitHub; artifacts expire after 90 days). That includes the installers, the
+platform zips, and the raw Windows `HardTune.vst3` bundle as its own
+artifact.
 
 ## Building
 
