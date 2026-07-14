@@ -78,6 +78,9 @@ void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
     detectionHopSamples   = juce::jmax (32, (int) std::lround (sampleRate * 0.003));
     samplesSinceDetection = detectionHopSamples; // detect on the first block
     currentRatio          = 1.0;
+    currentNoteMidi       = -1;
+    pendingNoteMidi       = -1;
+    pendingCount          = 0;
 
     formantShifter.prepare (sampleRate);
     echo.prepare (sampleRate);
@@ -143,7 +146,33 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             quantizer.set ((int) keyParam->load(),
                            (hardtune::Scale) (int) scaleParam->load());
 
-            const float target = quantizer.snapFrequencyHz (result.frequencyHz);
+            const float detectedMidi =
+                hardtune::Quantizer::frequencyToMidi (result.frequencyHz);
+            const int snapped = quantizer.snapMidi (detectedMidi);
+
+            // Two consecutive detections confirm a note change; within a
+            // held note the ratio still re-aims continuously (flattening
+            // vibrato), so corrections stay instant.
+            if (currentNoteMidi < 0 || snapped == currentNoteMidi)
+            {
+                currentNoteMidi = snapped;
+                pendingNoteMidi = -1;
+                pendingCount    = 0;
+            }
+            else if (snapped == pendingNoteMidi && ++pendingCount >= 2)
+            {
+                currentNoteMidi = snapped;
+                pendingNoteMidi = -1;
+                pendingCount    = 0;
+            }
+            else if (snapped != pendingNoteMidi)
+            {
+                pendingNoteMidi = snapped;
+                pendingCount    = 1;
+            }
+
+            const float target =
+                hardtune::Quantizer::midiToFrequency ((float) currentNoteMidi);
             currentRatio = (double) target / (double) result.frequencyHz;
             lastTargetHz = target;
 

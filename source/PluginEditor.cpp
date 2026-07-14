@@ -67,8 +67,10 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupCombo (dualBox, "dual", dualAttachment);
 
     // CRONK: harshness dial, 0% = softest texture, 100% = maximum extreme.
+    // Rendered as a clock face (see HardTuneLookAndFeel).
     setupLabel (cronkLabel, "CRONK");
     setupDial (cronkDial, "cronk", " %", cronkAttachment);
+    cronkDial.getProperties().set ("clockFace", true);
     setupLabel (formantLabel, "FORMANT");
     setupDial (formantDial, "formant", " st", formantAttachment);
     setupLabel (echoLabel, "ECHO");
@@ -121,7 +123,7 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (theme::textDim);
     g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
-    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.5",
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.6",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -189,17 +191,14 @@ void HardTuneAudioProcessorEditor::timerCallback()
 
     if (detected > 0.0f && target > 0.0f)
     {
-        const float cents = 1200.0f * std::log2 (target / detected);
-        display.push (cents, true);
-
-        juce::String sign (cents >= 0.5f ? "+" : (cents <= -0.5f ? "-" : ""));
-        display.setReadout (noteNameForHz (detected) + "  >  " + noteNameForHz (target)
-                            + "   " + sign + juce::String (std::abs ((int) std::lround (cents)))
-                            + " ct");
+        display.push (hardtune::Quantizer::frequencyToMidi (detected),
+                      hardtune::Quantizer::frequencyToMidi (target),
+                      true);
+        display.setStatusText (noteNameForHz (target));
     }
     else
     {
-        display.push (0.0f, false);
-        display.setReadout (powerButton.getToggleState() ? juce::String() : "BYPASSED");
+        display.push (0.0f, 0.0f, false);
+        display.setStatusText (powerButton.getToggleState() ? juce::String() : "BYPASSED");
     }
 }

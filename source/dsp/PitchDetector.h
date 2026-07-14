@@ -26,10 +26,10 @@ public:
                   float maxFrequencyHz = 1000.0f)
     {
         sr     = sampleRate;
-        // ~12 ms integration window: deliberately short. The estimate reacts
-        // almost instantly and jitters on its way — that twitchiness is the
-        // product, not a defect.
-        window = std::max (256, (int) std::lround (sr * 0.012));
+        // ~15 ms integration window: short enough to react near-instantly,
+        // long enough that the estimate doesn't dissolve into per-frame
+        // chatter (the processor adds a 2-frame note confirmation on top).
+        window = std::max (256, (int) std::lround (sr * 0.015));
         maxLag = std::max (window / 4, (int) std::lround (sr / minFrequencyHz));
         minLag = std::max (2, (int) std::lround (sr / maxFrequencyHz));
 

@@ -26,16 +26,16 @@ public:
         mask = size - 1;
         buffer.assign ((size_t) size, 0.0f);
 
-        window = sr * 0.006; // default, overridden by the SNAP parameter
+        window = sr * 0.018; // ~CRONK 50%, overridden by the parameter
         writeCount = 0;
         phase = 0.0;
         ratio = 1.0;
     }
 
-    // CRONK maps 0..100% onto the sweep window, log-spaced: 0% = 20 ms
-    // (least extreme), 100% = the 1.5 ms floor (maximum buzz). Below the
-    // floor the taps would sit inside a single vocal cycle and the shift
-    // stops working, so 100% is as extreme as physics allows.
+    // CRONK maps 0..100% onto the sweep window, log-spaced: 0% = 40 ms
+    // (smooth), 100% = 8 ms (maximum grit). The floor is chosen so the
+    // voice stays intelligible: below ~8 ms the taps crowd inside a couple
+    // of vocal cycles and the output degrades into gibberish.
     static double cronkToWindowSeconds (double percent) noexcept
     {
         const double t = std::clamp (percent, 0.0, 100.0) / 100.0;
@@ -111,8 +111,8 @@ private:
     }
 
     static constexpr double pi = 3.14159265358979323846;
-    static constexpr double minWindowSeconds = 0.0015;
-    static constexpr double maxWindowSeconds = 0.02;
+    static constexpr double minWindowSeconds = 0.008;
+    static constexpr double maxWindowSeconds = 0.04;
 
     std::vector<float> buffer;
     int mask = 0;

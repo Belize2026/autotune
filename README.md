@@ -63,10 +63,11 @@ artifacts.
 ## v1 scope
 
 - Mono vocal input expected
-- YIN pitch detection over a tiny (~12 ms) window, re-checked every ~3 ms,
+- YIN pitch detection over a tiny (~15 ms) window, re-checked every ~3 ms,
   with an aggressive grab-anyway fallback on marginal frames — the tuner
-  clamps on instantly and never relaxes mid-phrase. Harsh and artificial on
-  purpose; that is the selling point
+  clamps on instantly and never relaxes mid-phrase. A 2-detection (~6 ms)
+  note confirmation keeps note changes as clean audible steps instead of
+  chatter. Harsh and artificial on purpose; that is the selling point
 - Hard quantisation to the nearest note of the selected key/scale: zero
   tolerance, zero glide, no partial correction
 - Time-domain pitch shifting (dual-tap crossfaded delay line), no formant
@@ -74,24 +75,27 @@ artifacts.
 - Controls: On/Off, Key (C–B), Scale (Chromatic / Major / Minor / Minor
   Pentatonic), Cronk dial, Formant dial, Dual Vocals selector, Echo dial,
   Reverb dial
-- **Cronk** (0–100 %): the harshness dial. It scales the shifter's sweep
-  window log-spaced from 20 ms (0 %, least extreme) down to the 1.5 ms
-  physical floor (100 %, maximum metallic buzz). Corrections are instant at
-  every setting — cronk shapes texture, not speed.
+- **Cronk** (0–100 %, clock-face dial): the harshness control. It scales
+  the shifter's sweep window log-spaced from 40 ms (0 %, smooth) down to
+  8 ms (100 %, maximum grit) — the floor is set where the voice stays
+  intelligible. Corrections are instant at every setting — cronk shapes
+  texture, not speed.
 - Formant shift: PSOLA-style pitch-synchronous granular processing driven by
   the tuner's pitch tracking — reshapes the main vocal's character (±12 st)
   while the tuned pitch stays put.
 - **Dual Vocals** selector (Off / Pitch 1 / Pitch 2): Off by default. The
   main vocal always stays on level; Pitch 1 layers an octave-up double
   underneath, Pitch 2 an octave-down double.
-- Echo: a single rotary dial (0–100 %), fixed 375 ms feedback delay. At 0 it
-  is fully inactive; turning it up activates it.
+- Echo: a single rotary dial (0–100 %), fixed 375 ms feedback delay that
+  self-ducks: repeats pull back while the vocal is present and bloom into
+  the gaps, so the mix never gets muddy. At 0 it is fully inactive.
 - Reverb: same dial-as-activator pattern (0–100 %) after the echo. Both work
   independently of the tune On/Off button, so the dry bypass can still carry
   space.
-- Live correction display: a scrolling trace of the correction being applied
-  (in cents, centre line = on pitch) plus the current detected → target note
-  readout, so you can see exactly what the tuner is doing.
+- Live tuning display: a scrolling note-track — the target note drawn as
+  bold stepped teal blocks (the steps are the note changes you hear), the
+  raw voice as a thin pink line being pulled onto them, with the current
+  note named large on the right.
 
 Signal chain: detect → quantise → shift → formant → dual voice → echo →
 reverb.
@@ -204,9 +208,11 @@ tested and iterated on without a DAW in the loop.
 The two knobs to iterate on (in code, per the build plan) when comparing
 against the Melodyne/Auto-Tune chain:
 
-- Detection window: `sr * 0.012` in `PitchDetector::prepare` — shorter is
+- Detection window: `sr * 0.015` in `PitchDetector::prepare` — shorter is
   twitchier and more robotic, longer is steadier.
-- Shifter sweep window: `sr * 0.018` in `PitchShifter::prepare` — shorter means
-  more modulation artifacts, longer smears transients.
+- Sweep window range: `minWindowSeconds` / `maxWindowSeconds` in
+  `PitchShifter` — what the CRONK dial maps onto.
+- Note confirmation: the 2-detection rule in `PluginProcessor` — raise it
+  for steadier notes, drop to 1 for maximum chatter.
 - Grab aggression: `fallbackThreshold` in `PitchDetector` — higher grabs even
   noisier frames.

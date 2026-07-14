@@ -193,11 +193,11 @@ void testCronkMapping()
     std::printf ("Cronk mapping (0%% soft -> 100%% extreme, log-spaced):\n");
     using PS = hardtune::PitchShifter;
 
-    check (std::abs (PS::cronkToWindowSeconds (0.0) - 0.02) < 1e-9, "0%% -> 20 ms");
-    check (std::abs (PS::cronkToWindowSeconds (100.0) - 0.0015) < 1e-9, "100%% -> 1.5 ms floor");
+    check (std::abs (PS::cronkToWindowSeconds (0.0) - 0.04) < 1e-9, "0%% -> 40 ms");
+    check (std::abs (PS::cronkToWindowSeconds (100.0) - 0.008) < 1e-9, "100%% -> 8 ms floor");
 
     const double mid = PS::cronkToWindowSeconds (50.0);
-    check (mid > 0.005 && mid < 0.006, "50%% -> ~5.5 ms",
+    check (mid > 0.017 && mid < 0.019, "50%% -> ~18 ms",
            std::to_string (mid * 1000.0) + " ms");
     check (PS::cronkToWindowSeconds (150.0) == PS::cronkToWindowSeconds (100.0),
            "out-of-range input clamps");
@@ -205,7 +205,7 @@ void testCronkMapping()
 
 void testExtremeSnapWindow()
 {
-    std::printf ("Extreme snap window (1.5 ms floor):\n");
+    std::printf ("Extreme snap window (8 ms floor):\n");
 
     const double sampleRate = 44100.0;
     hardtune::PitchShifter shifter;
@@ -231,27 +231,54 @@ void testExtremeSnapWindow()
 
 void testEcho()
 {
-    std::printf ("Echo:\n");
+    std::printf ("Echo (self-ducking):\n");
 
     const double sampleRate = 44100.0;
-    hardtune::Echo echo;
-    echo.prepare (sampleRate);
-
-    // An impulse must come back at the fixed delay time, scaled by the wet amount.
     const int delaySamples = (int) std::lround (sampleRate * 0.375);
-    std::vector<float> signal ((size_t) delaySamples * 2, 0.0f);
-    signal[0] = 1.0f;
-    echo.processMono (signal.data(), (int) signal.size(), 0.5f);
 
-    check (std::abs (signal[0] - 1.0f) < 1.0e-6f, "dry impulse unchanged");
-    check (std::abs (signal[(size_t) delaySamples] - 0.5f) < 1.0e-3f,
-           "first repeat at 375 ms, wet-scaled",
-           "got " + std::to_string (signal[(size_t) delaySamples]));
+    {
+        // An impulse must come back at the fixed delay time.
+        hardtune::Echo echo;
+        echo.prepare (sampleRate);
+        std::vector<float> signal ((size_t) delaySamples * 2, 0.0f);
+        signal[0] = 1.0f;
+        echo.processMono (signal.data(), (int) signal.size(), 0.5f);
 
-    float between = 0.0f;
-    for (int i = 1; i < delaySamples; ++i)
-        between = std::max (between, std::abs (signal[(size_t) i]));
-    check (between < 1.0e-6f, "silence between repeats");
+        check (std::abs (signal[0] - 1.0f) < 1.0e-3f, "dry impulse unchanged");
+        check (signal[(size_t) delaySamples] > 0.02f,
+               "first repeat lands at 375 ms",
+               "got " + std::to_string (signal[(size_t) delaySamples]));
+
+        float between = 0.0f;
+        for (int i = 1; i < delaySamples; ++i)
+            between = std::max (between, std::abs (signal[(size_t) i]));
+        check (between < 1.0e-6f, "silence between repeats");
+    }
+
+    {
+        // Ducking: repeats stay out of the way while the vocal is present
+        // and bloom into the gap once it stops.
+        hardtune::Echo echo;
+        echo.prepare (sampleRate);
+
+        auto voiced = makeSine (220.0, sampleRate, 1.0, 0.4f);
+        std::vector<float> gap ((size_t) (sampleRate * 0.6), 0.0f);
+
+        echo.processMono (voiced.data(), (int) voiced.size(), 1.0f);
+        echo.processMono (gap.data(), (int) gap.size(), 1.0f);
+
+        float duringVoice = 0.0f;
+        for (size_t i = voiced.size() / 2; i < voiced.size(); ++i)
+            duringVoice = std::max (duringVoice, std::abs (voiced[i]));
+        check (duringVoice < 0.55f, "repeats ducked while the vocal plays",
+               "peak " + std::to_string (duringVoice));
+
+        float duringGap = 0.0f;
+        for (float v : gap)
+            duringGap = std::max (duringGap, std::abs (v));
+        check (duringGap > 0.15f, "repeats fill the gap after the vocal",
+               "peak " + std::to_string (duringGap));
+    }
 }
 } // namespace
 

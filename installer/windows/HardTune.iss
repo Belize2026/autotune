@@ -2,7 +2,7 @@
 ; Built in CI with:  ISCC.exe /O"dist-installer" installer\windows\HardTune.iss
 ; (paths below are relative to this file's directory)
 
-#define AppVersion "0.5.0"
+#define AppVersion "0.6.0"
 
 [Setup]
 AppId={{D4C0FFEE-2026-4A11-B0B0-00C0FFEE2026}

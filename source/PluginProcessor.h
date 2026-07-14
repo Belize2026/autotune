@@ -83,5 +83,12 @@ private:
     int samplesSinceDetection = 0;
     double currentRatio       = 1.0;
 
+    // Note confirmation: a new target note must win two consecutive
+    // detections (~6 ms) before the tuner jumps to it. Kills between-note
+    // chatter so note changes are clean, audible steps — still zero glide.
+    int currentNoteMidi = -1;
+    int pendingNoteMidi = -1;
+    int pendingCount    = 0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HardTuneAudioProcessor)
 };
