@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(HardTune VERSION 0.2.0 LANGUAGES C CXX)
+# Universal macOS binaries (Apple silicon + Intel) with a broad minimum OS,
+# so the plugin loads in Intel DAWs, under Rosetta, and on older systems.
+# Must be set before project(). Ignored on non-Apple platforms.
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build universal macOS binaries")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
+
+project(HardTune VERSION 0.2.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
