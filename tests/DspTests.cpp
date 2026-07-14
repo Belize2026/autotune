@@ -188,6 +188,21 @@ void testFormantShifter()
     }
 }
 
+void testCronkMapping()
+{
+    std::printf ("Cronk mapping (0%% soft -> 100%% extreme, log-spaced):\n");
+    using PS = hardtune::PitchShifter;
+
+    check (std::abs (PS::cronkToWindowSeconds (0.0) - 0.02) < 1e-9, "0%% -> 20 ms");
+    check (std::abs (PS::cronkToWindowSeconds (100.0) - 0.0015) < 1e-9, "100%% -> 1.5 ms floor");
+
+    const double mid = PS::cronkToWindowSeconds (50.0);
+    check (mid > 0.005 && mid < 0.006, "50%% -> ~5.5 ms",
+           std::to_string (mid * 1000.0) + " ms");
+    check (PS::cronkToWindowSeconds (150.0) == PS::cronkToWindowSeconds (100.0),
+           "out-of-range input clamps");
+}
+
 void testExtremeSnapWindow()
 {
     std::printf ("Extreme snap window (1.5 ms floor):\n");
@@ -247,6 +262,7 @@ int main()
     testQuantizer();
     testEndToEnd();
     testFormantShifter();
+    testCronkMapping();
     testExtremeSnapWindow();
     testEcho();
 

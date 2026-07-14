@@ -22,11 +22,6 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     powerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         apvts, "power", powerButton);
 
-    dualButton.setClickingTogglesState (true);
-    addAndMakeVisible (dualButton);
-    dualAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-        apvts, "dual", dualButton);
-
     addAndMakeVisible (display);
 
     auto setupLabel = [this] (juce::Label& label, const juce::String& text)
@@ -69,45 +64,31 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupLabel (scaleLabel, "SCALE");
     setupCombo (scaleBox, "scale", scaleAttachment);
     setupLabel (dualLabel, "DUAL VOCALS");
+    setupCombo (dualBox, "dual", dualAttachment);
 
-    // SNAP: horizontal harshness scale, 0 ms (extreme) .. 20 ms (softer).
-    setupLabel (snapLabel, "SNAP WINDOW");
-    snapSlider.setSliderStyle (juce::Slider::LinearHorizontal);
-    snapSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 76, 18);
-    snapSlider.setTextValueSuffix (" ms");
-    snapSlider.setColour (juce::Slider::trackColourId, theme::teal);
-    snapSlider.setColour (juce::Slider::backgroundColourId, theme::control);
-    snapSlider.setColour (juce::Slider::thumbColourId, theme::pink);
-    snapSlider.setColour (juce::Slider::textBoxTextColourId, theme::text);
-    snapSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
-    snapSlider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    addAndMakeVisible (snapSlider);
-    snapAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-        apvts, "snap", snapSlider);
-
-    auto setupEndLabel = [this] (juce::Label& label, const juce::String& text,
-                                 juce::Justification just)
-    {
-        label.setText (text, juce::dontSendNotification);
-        label.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
-        label.setColour (juce::Label::textColourId, theme::pink);
-        label.setJustificationType (just);
-        addAndMakeVisible (label);
-    };
-    setupEndLabel (extremeLabel, "EXTREME", juce::Justification::centredLeft);
-    setupEndLabel (mildLabel, "NOT AS EXTREME", juce::Justification::centredRight);
-    mildLabel.setColour (juce::Label::textColourId, theme::textDim);
-
+    // CRONK: harshness dial, 0% = softest texture, 100% = maximum extreme.
+    setupLabel (cronkLabel, "CRONK");
+    setupDial (cronkDial, "cronk", " %", cronkAttachment);
     setupLabel (formantLabel, "FORMANT");
     setupDial (formantDial, "formant", " st", formantAttachment);
-    setupLabel (dualMixLabel, "DUAL MIX");
-    setupDial (dualMixDial, "dualmix", " %", dualMixAttachment);
     setupLabel (echoLabel, "ECHO");
     setupDial (echoDial, "echo", " %", echoAttachment);
     setupLabel (reverbLabel, "REVERB");
     setupDial (reverbDial, "reverb", " %", reverbAttachment);
 
-    setSize (560, 540);
+    auto setupEndLabel = [this] (juce::Label& label, const juce::String& text,
+                                 juce::Justification just, juce::Colour colour)
+    {
+        label.setText (text, juce::dontSendNotification);
+        label.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
+        label.setColour (juce::Label::textColourId, colour);
+        label.setJustificationType (just);
+        addAndMakeVisible (label);
+    };
+    setupEndLabel (mildLabel, "LESS", juce::Justification::centredLeft, theme::textDim);
+    setupEndLabel (extremeLabel, "EXTREME", juce::Justification::centredRight, theme::pink);
+
+    setSize (560, 500);
     startTimerHz (30);
 }
 
@@ -140,7 +121,7 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (theme::textDim);
     g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
-    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.4",
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.5",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -169,23 +150,14 @@ void HardTuneAudioProcessorEditor::resized()
     scaleLabel.setBounds (scaleArea.removeFromTop (16));
     scaleBox.setBounds (scaleArea.removeFromTop (30));
     dualLabel.setBounds (dualArea.removeFromTop (16));
-    dualButton.setBounds (dualArea.removeFromTop (30).withSizeKeepingCentre (84, 28));
+    dualBox.setBounds (dualArea.removeFromTop (30));
 
-    area.removeFromTop (12);
+    area.removeFromTop (14);
 
-    // SNAP harshness scale with its end labels.
-    auto snapArea = area.removeFromTop (62).reduced (6, 0);
-    snapLabel.setBounds (snapArea.removeFromTop (16));
-    snapSlider.setBounds (snapArea.removeFromTop (26));
-    auto ends = snapArea.removeFromTop (14).withTrimmedRight (82); // skip the value box
-    extremeLabel.setBounds (ends.removeFromLeft (ends.getWidth() / 2));
-    mildLabel.setBounds (ends);
-
-    area.removeFromTop (12);
-
-    // Dial row: Formant / Dual Mix / Echo / Reverb.
+    // Dial row: Cronk / Formant / Echo / Reverb.
     auto dials = area.removeFromTop (150);
     const int dialW = dials.getWidth() / 4;
+    const auto cronkCell = dials.withWidth (dialW); // for the end labels below
 
     auto layoutDial = [&dials, dialW] (juce::Label& label, juce::Slider& dial)
     {
@@ -194,18 +166,23 @@ void HardTuneAudioProcessorEditor::resized()
         dial.setBounds (cell);
     };
 
+    layoutDial (cronkLabel, cronkDial);
     layoutDial (formantLabel, formantDial);
-    layoutDial (dualMixLabel, dualMixDial);
     layoutDial (echoLabel, echoDial);
     layoutDial (reverbLabel, reverbDial);
+
+    // LESS / EXTREME markers under the CRONK dial.
+    auto cronkEnds = area.removeFromTop (12)
+                         .withX (cronkCell.getX())
+                         .withWidth (dialW)
+                         .reduced (14, 0);
+    mildLabel.setBounds (cronkEnds.removeFromLeft (cronkEnds.getWidth() / 2));
+    extremeLabel.setBounds (cronkEnds);
 }
 
 void HardTuneAudioProcessorEditor::timerCallback()
 {
     powerButton.setButtonText (powerButton.getToggleState() ? "ON" : "OFF");
-    dualButton.setButtonText (dualButton.getToggleState() ? "ON" : "OFF");
-    dualMixDial.setEnabled (dualButton.getToggleState());
-    dualMixLabel.setAlpha (dualButton.getToggleState() ? 1.0f : 0.35f);
 
     const float detected = processor.detectedHz.load();
     const float target   = processor.targetHz.load();

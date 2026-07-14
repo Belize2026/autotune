@@ -6,6 +6,7 @@ namespace
 const juce::StringArray keyNames { "C", "C#", "D", "D#", "E", "F",
                                    "F#", "G", "G#", "A", "A#", "B" };
 const juce::StringArray scaleNames { "Chromatic", "Major", "Minor", "Minor Pentatonic" };
+const juce::StringArray dualNames { "Off", "Pitch 1 (Up)", "Pitch 2 (Down)" };
 } // namespace
 
 HardTuneAudioProcessor::HardTuneAudioProcessor()
@@ -17,10 +18,9 @@ HardTuneAudioProcessor::HardTuneAudioProcessor()
     powerParam   = apvts.getRawParameterValue ("power");
     keyParam     = apvts.getRawParameterValue ("key");
     scaleParam   = apvts.getRawParameterValue ("scale");
-    snapParam    = apvts.getRawParameterValue ("snap");
+    cronkParam   = apvts.getRawParameterValue ("cronk");
     formantParam = apvts.getRawParameterValue ("formant");
     dualParam    = apvts.getRawParameterValue ("dual");
-    dualMixParam = apvts.getRawParameterValue ("dualmix");
     echoParam    = apvts.getRawParameterValue ("echo");
     reverbParam  = apvts.getRawParameterValue ("reverb");
 }
@@ -36,19 +36,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::crea
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { "scale", 1 }, "Scale", scaleNames, 0));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { "snap", 1 }, "Snap Window",
-        juce::NormalisableRange<float> (0.0f, 20.0f, 0.1f), 6.0f,
-        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+        juce::ParameterID { "cronk", 1 }, "Cronk",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 50.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "formant", 1 }, "Formant",
         juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("st")));
-    params.push_back (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { "dual", 1 }, "Dual Vocals", false));
-    params.push_back (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { "dualmix", 1 }, "Dual Mix",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 50.0f,
-        juce::AudioParameterFloatAttributes().withLabel ("%")));
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "dual", 2 }, "Dual Vocals", dualNames, 0));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "echo", 1 }, "Echo",
         juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
@@ -76,6 +72,7 @@ void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     detector.prepare (sampleRate);
     shifter.prepare (sampleRate);
+    dualShifter.prepare (sampleRate);
 
     // Re-detect roughly every 3 ms: corrections land essentially instantly.
     detectionHopSamples   = juce::jmax (32, (int) std::lround (sampleRate * 0.003));
@@ -116,6 +113,7 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         for (int i = 0; i < numSamples; ++i)
         {
             shifter.skipSample (channel[i]);
+            dualShifter.skipSample (channel[i]);
             formantShifter.skipSample (channel[i]);
         }
 
@@ -127,9 +125,12 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         return;
     }
 
-    // SNAP dial: 0 on the dial clamps to the shifter's ~1.5 ms floor —
-    // maximum grit. Corrections stay instant at every setting.
-    shifter.setWindowSeconds ((double) snapParam->load() * 0.001);
+    // CRONK: 0% = softest texture (20 ms window), 100% = maximum extreme
+    // (1.5 ms floor). Corrections stay instant at every setting.
+    const double cronkWindow =
+        hardtune::PitchShifter::cronkToWindowSeconds ((double) cronkParam->load());
+    shifter.setWindowSeconds (cronkWindow);
+    dualShifter.setWindowSeconds (cronkWindow);
 
     samplesSinceDetection += numSamples;
     if (samplesSinceDetection >= detectionHopSamples)
@@ -167,6 +168,7 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         channel[i] = shifter.processSample (channel[i]);
 
     applyFormantStage (channel, numSamples);
+    applyDualStage (channel, numSamples);
     applyPostEffects (buffer, true);
 
     for (int ch = 1; ch < numChannels; ++ch)
@@ -176,23 +178,13 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 void HardTuneAudioProcessor::applyFormantStage (float* channel, int numSamples)
 {
     const float formantSemitones = formantParam->load();
-    const bool  dual             = dualParam->load() > 0.5f;
-    const float dualMix          = dualMixParam->load() * 0.01f;
 
     // Grains follow the note the tuned vocal is sitting on.
     formantShifter.setFundamental (lastTargetHz);
     formantShifter.setRatio (std::exp2 ((double) formantSemitones / 12.0));
 
-    if (dual)
+    if (std::abs (formantSemitones) > 0.05f)
     {
-        // Main vocal stays on level; the formant-shifted double is blended
-        // in underneath with the mix dial.
-        for (int i = 0; i < numSamples; ++i)
-            channel[i] += dualMix * formantShifter.processSample (channel[i]);
-    }
-    else if (std::abs (formantSemitones) > 0.05f)
-    {
-        // Single-vocal mode: reshape the main vocal directly.
         for (int i = 0; i < numSamples; ++i)
             channel[i] = formantShifter.processSample (channel[i]);
     }
@@ -201,6 +193,24 @@ void HardTuneAudioProcessor::applyFormantStage (float* channel, int numSamples)
         for (int i = 0; i < numSamples; ++i)
             formantShifter.skipSample (channel[i]);
     }
+}
+
+void HardTuneAudioProcessor::applyDualStage (float* channel, int numSamples)
+{
+    // DUAL VOCALS: the main vocal stays on level; PITCH 1 layers an
+    // octave-up double underneath, PITCH 2 an octave-down double.
+    const int mode = (int) dualParam->load();
+
+    if (mode == 0)
+    {
+        for (int i = 0; i < numSamples; ++i)
+            dualShifter.skipSample (channel[i]);
+        return;
+    }
+
+    dualShifter.setRatio (mode == 1 ? 2.0 : 0.5);
+    for (int i = 0; i < numSamples; ++i)
+        channel[i] += 0.5f * dualShifter.processSample (channel[i]);
 }
 
 void HardTuneAudioProcessor::applyPostEffects (juce::AudioBuffer<float>& buffer, bool tuneWasApplied)

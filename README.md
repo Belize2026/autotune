@@ -72,15 +72,18 @@ artifacts.
 - Time-domain pitch shifting (dual-tap crossfaded delay line), no formant
   preservation
 - Controls: On/Off, Key (C–B), Scale (Chromatic / Major / Minor / Minor
-  Pentatonic), Formant dial, Dual Vocals toggle + Dual Mix dial, Echo dial,
+  Pentatonic), Cronk dial, Formant dial, Dual Vocals selector, Echo dial,
   Reverb dial
+- **Cronk** (0–100 %): the harshness dial. It scales the shifter's sweep
+  window log-spaced from 20 ms (0 %, least extreme) down to the 1.5 ms
+  physical floor (100 %, maximum metallic buzz). Corrections are instant at
+  every setting — cronk shapes texture, not speed.
 - Formant shift: PSOLA-style pitch-synchronous granular processing driven by
-  the tuner's pitch tracking — reshapes the vocal character (±12 st) while
-  the tuned pitch stays put. Two modes:
-  - **Dual Vocals off** (default): the Formant dial reshapes the main vocal
-    directly.
-  - **Dual Vocals on**: the main vocal stays on level and a formant-shifted
-    double is layered underneath, blended with the Dual Mix dial.
+  the tuner's pitch tracking — reshapes the main vocal's character (±12 st)
+  while the tuned pitch stays put.
+- **Dual Vocals** selector (Off / Pitch 1 / Pitch 2): Off by default. The
+  main vocal always stays on level; Pitch 1 layers an octave-up double
+  underneath, Pitch 2 an octave-down double.
 - Echo: a single rotary dial (0–100 %), fixed 375 ms feedback delay. At 0 it
   is fully inactive; turning it up activates it.
 - Reverb: same dial-as-activator pattern (0–100 %) after the echo. Both work
@@ -90,7 +93,8 @@ artifacts.
   (in cents, centre line = on pitch) plus the current detected → target note
   readout, so you can see exactly what the tuner is doing.
 
-Signal chain: detect → quantise → shift → formant → echo → reverb.
+Signal chain: detect → quantise → shift → formant → dual voice → echo →
+reverb.
 
 Explicitly **not** in v1: speed knob, wet/dry mix for the tuner itself.
 

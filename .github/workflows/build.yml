@@ -102,13 +102,13 @@ jobs:
           pkgbuild --component "build/HardTune_artefacts/Release/AU/AUTISMIDOL AUTOTUNE.component" \
                    --install-location /Library/Audio/Plug-Ins/Components \
                    --identifier com.belize2026.hardtune.au \
-                   --version 0.4.0 \
+                   --version 0.5.0 \
                    --scripts installer/macos/scripts \
                    pkg-components/HardTune-AU.pkg
           pkgbuild --component "build/HardTune_artefacts/Release/VST3/AUTISMIDOL AUTOTUNE.vst3" \
                    --install-location /Library/Audio/Plug-Ins/VST3 \
                    --identifier com.belize2026.hardtune.vst3 \
-                   --version 0.4.0 \
+                   --version 0.5.0 \
                    pkg-components/HardTune-VST3.pkg
           productbuild --package pkg-components/HardTune-AU.pkg \
                        --package pkg-components/HardTune-VST3.pkg \

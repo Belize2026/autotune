@@ -21,17 +21,18 @@ private:
     HardTuneLookAndFeel lookAndFeel; // declared before the components that use it
 
     juce::Rectangle<int> headerArea; // logo-style title painted in paint()
-    juce::TextButton powerButton, dualButton;
-    juce::ComboBox keyBox, scaleBox;
-    juce::Slider snapSlider, formantDial, dualMixDial, echoDial, reverbDial;
-    juce::Label keyLabel, scaleLabel, dualLabel, snapLabel, extremeLabel, mildLabel,
-                formantLabel, dualMixLabel, echoLabel, reverbLabel;
+    juce::TextButton powerButton;
+    juce::ComboBox keyBox, scaleBox, dualBox;
+    juce::Slider cronkDial, formantDial, echoDial, reverbDial;
+    juce::Label keyLabel, scaleLabel, dualLabel, cronkLabel, extremeLabel, mildLabel,
+                formantLabel, echoLabel, reverbLabel;
     CorrectionDisplay display;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment, dualAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> keyAttachment, scaleAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        keyAttachment, scaleAttachment, dualAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
-        snapAttachment, formantAttachment, dualMixAttachment, echoAttachment, reverbAttachment;
+        cronkAttachment, formantAttachment, echoAttachment, reverbAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HardTuneAudioProcessorEditor)
 };

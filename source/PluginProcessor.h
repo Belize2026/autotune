@@ -52,22 +52,23 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     void applyFormantStage (float* channel, int numSamples);
+    void applyDualStage (float* channel, int numSamples);
     void applyPostEffects (juce::AudioBuffer<float>& buffer, bool tuneWasApplied);
 
     juce::AudioProcessorValueTreeState apvts;
     std::atomic<float>* powerParam   = nullptr;
     std::atomic<float>* keyParam     = nullptr;
     std::atomic<float>* scaleParam   = nullptr;
-    std::atomic<float>* snapParam    = nullptr;
+    std::atomic<float>* cronkParam   = nullptr;
     std::atomic<float>* formantParam = nullptr;
     std::atomic<float>* dualParam    = nullptr;
-    std::atomic<float>* dualMixParam = nullptr;
     std::atomic<float>* echoParam    = nullptr;
     std::atomic<float>* reverbParam  = nullptr;
 
     hardtune::PitchDetector  detector;
     hardtune::Quantizer      quantizer;
     hardtune::PitchShifter   shifter;
+    hardtune::PitchShifter   dualShifter; // octave-up/down double voice
     hardtune::FormantShifter formantShifter;
     hardtune::Echo           echo;
 

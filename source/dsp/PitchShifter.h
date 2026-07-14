@@ -32,10 +32,19 @@ public:
         ratio = 1.0;
     }
 
+    // CRONK maps 0..100% onto the sweep window, log-spaced: 0% = 20 ms
+    // (least extreme), 100% = the 1.5 ms floor (maximum buzz). Below the
+    // floor the taps would sit inside a single vocal cycle and the shift
+    // stops working, so 100% is as extreme as physics allows.
+    static double cronkToWindowSeconds (double percent) noexcept
+    {
+        const double t = std::clamp (percent, 0.0, 100.0) / 100.0;
+        return maxWindowSeconds * std::pow (minWindowSeconds / maxWindowSeconds, t);
+    }
+
     // The crossfade/sweep window is the harshness control: shorter adds
-    // metallic modulation grit and cuts latency; below ~1.5 ms the taps sit
-    // inside a single vocal cycle and the shift degrades into pure buzz, so
-    // that's the floor. Corrections are instant at any setting.
+    // metallic modulation grit and cuts latency. Corrections are instant
+    // at any setting.
     void setWindowSeconds (double seconds) noexcept
     {
         window = std::clamp (seconds, minWindowSeconds, maxWindowSeconds) * sr;
