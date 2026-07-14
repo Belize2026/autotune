@@ -17,8 +17,8 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setLookAndFeel (&lookAndFeel);
     auto& apvts = processor.getValueTreeState();
 
-    titleLabel.setText ("HARD TUNE", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (juce::FontOptions (26.0f, juce::Font::bold)));
+    titleLabel.setText ("AUTISMIDOL AUTOTUNE", juce::dontSendNotification);
+    titleLabel.setFont (juce::Font (juce::FontOptions (22.0f, juce::Font::bold)));
     titleLabel.setColour (juce::Label::textColourId, theme::text);
     addAndMakeVisible (titleLabel);
 

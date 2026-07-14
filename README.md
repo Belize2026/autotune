@@ -1,8 +1,12 @@
-# HardTune
+# AUTISMIDOL AUTOTUNE
 
 A VST3/AU plugin that does one thing well: **instant, hard pitch snapping with
 no glide**. This is the extreme robotic autotune sound used in hyperpop and
 melodic rap — not a natural-sounding corrector.
+
+(The plugin is named **AUTISMIDOL AUTOTUNE** everywhere you'll see it — in
+your DAW, the installers, and the plugin window. `HardTune` survives only as
+the internal code name in this repo's source.)
 
 ## Download & install
 
@@ -10,8 +14,8 @@ Grab the installer for your OS from the
 **[latest release](https://github.com/Belize2026/autotune/releases/latest)**
 (no GitHub account needed):
 
-- **macOS**: [`HardTune-Installer-macOS.pkg`](https://github.com/Belize2026/autotune/releases/latest/download/HardTune-Installer-macOS.pkg)
-- **Windows**: [`HardTune-Installer-Windows.exe`](https://github.com/Belize2026/autotune/releases/latest/download/HardTune-Installer-Windows.exe)
+- **macOS**: [`AUTISMIDOL-AUTOTUNE-Installer-macOS.pkg`](https://github.com/Belize2026/autotune/releases/latest/download/AUTISMIDOL-AUTOTUNE-Installer-macOS.pkg)
+- **Windows**: [`AUTISMIDOL-AUTOTUNE-Installer-Windows.exe`](https://github.com/Belize2026/autotune/releases/latest/download/AUTISMIDOL-AUTOTUNE-Installer-Windows.exe)
 
 ### macOS (Logic Pro, Ableton, etc.)
 
@@ -21,29 +25,30 @@ Grab the installer for your OS from the
    If macOS still refuses: System Settings → Privacy & Security → scroll down
    → **Open Anyway**.
 3. Follow the installer (it asks for your password). It installs:
-   - `HardTune.component` (AU, what Logic uses) → `/Library/Audio/Plug-Ins/Components`
-   - `HardTune.vst3` → `/Library/Audio/Plug-Ins/VST3`
+   - `AUTISMIDOL AUTOTUNE.component` (AU, what Logic uses) → `/Library/Audio/Plug-Ins/Components`
+   - `AUTISMIDOL AUTOTUNE.vst3` → `/Library/Audio/Plug-Ins/VST3`
 4. Open your DAW. In Logic the plugin appears on a channel strip under
-   **Audio FX → Audio Units → Belize2026 → HardTune**. If it doesn't show up:
-   Logic Pro → Settings → Plug-in Manager → **Reset & Rescan Selection**,
-   then restart Logic.
+   **Audio FX → Audio Units → Belize2026 → AUTISMIDOL AUTOTUNE**. If it
+   doesn't show up: Logic Pro → Settings → Plug-in Manager → **Reset &
+   Rescan Selection**, then restart Logic.
 
 ### Windows
 
 1. Download the `.exe` above.
 2. If SmartScreen pops up, click **More info → Run anyway** (the installer is
    unsigned).
-3. Follow the installer. It installs `HardTune.vst3` into
+3. Follow the installer. It installs `AUTISMIDOL AUTOTUNE.vst3` into
    `C:\Program Files\Common Files\VST3` — the standard folder every VST3 DAW
    scans.
-4. Rescan plugins in your DAW (or just restart it). HardTune appears under
-   Belize2026.
+4. Rescan plugins in your DAW (or just restart it). AUTISMIDOL AUTOTUNE
+   appears under Belize2026.
 
 ### Uninstalling
 
-- **macOS**: delete `HardTune.component` and `HardTune.vst3` from the two
-  folders listed above.
-- **Windows**: Settings → Apps → Installed apps → HardTune → Uninstall.
+- **macOS**: delete `AUTISMIDOL AUTOTUNE.component` and
+  `AUTISMIDOL AUTOTUNE.vst3` from the two folders listed above.
+- **Windows**: Settings → Apps → Installed apps → AUTISMIDOL AUTOTUNE →
+  Uninstall.
 
 ### What's in this repository
 
@@ -90,14 +95,14 @@ Explicitly **not** in v1: speed knob, wet/dry mix for the tuner itself.
 ## Manual install (no installer)
 
 Each release also carries the raw plugin bundles as zips
-(`HardTune-AU-macOS.zip`, `HardTune-VST3-macOS.zip`,
-`HardTune-VST3-Windows.zip`, `HardTune-VST3-Linux.zip`) if you'd rather
-place the files yourself.
+(`AUTISMIDOL-AUTOTUNE-AU-macOS.zip`, `AUTISMIDOL-AUTOTUNE-VST3-macOS.zip`,
+`AUTISMIDOL-AUTOTUNE-VST3-Windows.zip`, `AUTISMIDOL-AUTOTUNE-VST3-Linux.zip`)
+if you'd rather place the files yourself.
 
 On a Mac, unzip and drop:
 
-- `HardTune.component` → `~/Library/Audio/Plug-Ins/Components/`
-- `HardTune.vst3` → `~/Library/Audio/Plug-Ins/VST3/`
+- `AUTISMIDOL AUTOTUNE.component` → `~/Library/Audio/Plug-Ins/Components/`
+- `AUTISMIDOL AUTOTUNE.vst3` → `~/Library/Audio/Plug-Ins/VST3/`
 
 Manually downloaded bundles get quarantined by macOS (they are ad-hoc
 signed, not notarised — another reason the `.pkg` installer is the easier
@@ -105,13 +110,13 @@ route, since installed files skip quarantine). After copying them into
 place, clear the flag once:
 
 ```sh
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/HardTune.component
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/HardTune.vst3
+xattr -dr com.apple.quarantine "$HOME/Library/Audio/Plug-Ins/Components/AUTISMIDOL AUTOTUNE.component"
+xattr -dr com.apple.quarantine "$HOME/Library/Audio/Plug-Ins/VST3/AUTISMIDOL AUTOTUNE.vst3"
 ```
 
 Then restart Logic (Settings → Plug-in Manager → Reset & Rescan if needed).
 
-On Windows, unzip and drop `HardTune.vst3` into
+On Windows, unzip and drop `AUTISMIDOL AUTOTUNE.vst3` into
 `C:\Program Files\Common Files\VST3`.
 
 ## Dev builds (every push)
@@ -119,8 +124,8 @@ On Windows, unzip and drop `HardTune.vst3` into
 Every push also builds everything via GitHub Actions: repo → **Actions** →
 latest **Build plugins** run → **Artifacts** (requires being signed in to
 GitHub; artifacts expire after 90 days). That includes the installers, the
-platform zips, and the raw Windows `HardTune.vst3` bundle as its own
-artifact.
+platform zips, and the raw Windows `AUTISMIDOL-AUTOTUNE.vst3` bundle as its
+own artifact.
 
 ## Building
 

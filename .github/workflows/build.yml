@@ -50,8 +50,8 @@ jobs:
       - name: Codesign (macOS)
         if: runner.os == 'macOS'
         run: |
-          codesign --force --deep -s - build/HardTune_artefacts/Release/AU/HardTune.component
-          codesign --force --deep -s - build/HardTune_artefacts/Release/VST3/HardTune.vst3
+          codesign --force --deep -s - "build/HardTune_artefacts/Release/AU/AUTISMIDOL AUTOTUNE.component"
+          codesign --force --deep -s - "build/HardTune_artefacts/Release/VST3/AUTISMIDOL AUTOTUNE.vst3"
 
       # Zip the bundles ourselves: upload-artifact does not preserve the
       # executable bits that .component/.vst3 bundles need on macOS/Linux.
@@ -59,21 +59,21 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir dist
-          ditto -c -k --keepParent build/HardTune_artefacts/Release/AU/HardTune.component dist/HardTune-AU-macOS.zip
-          ditto -c -k --keepParent build/HardTune_artefacts/Release/VST3/HardTune.vst3 dist/HardTune-VST3-macOS.zip
+          ditto -c -k --keepParent "build/HardTune_artefacts/Release/AU/AUTISMIDOL AUTOTUNE.component" dist/AUTISMIDOL-AUTOTUNE-AU-macOS.zip
+          ditto -c -k --keepParent "build/HardTune_artefacts/Release/VST3/AUTISMIDOL AUTOTUNE.vst3" dist/AUTISMIDOL-AUTOTUNE-VST3-macOS.zip
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
           mkdir dist
-          Compress-Archive -Path build/HardTune_artefacts/Release/VST3/HardTune.vst3 -DestinationPath dist/HardTune-VST3-Windows.zip
+          Compress-Archive -Path "build/HardTune_artefacts/Release/VST3/AUTISMIDOL AUTOTUNE.vst3" -DestinationPath dist/AUTISMIDOL-AUTOTUNE-VST3-Windows.zip
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
         run: |
           mkdir dist
           cd build/HardTune_artefacts/Release/VST3
-          zip -r "$GITHUB_WORKSPACE/dist/HardTune-VST3-Linux.zip" HardTune.vst3
+          zip -r "$GITHUB_WORKSPACE/dist/AUTISMIDOL-AUTOTUNE-VST3-Linux.zip" "AUTISMIDOL AUTOTUNE.vst3"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -86,8 +86,8 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: HardTune.vst3
-          path: build/HardTune_artefacts/Release/VST3/HardTune.vst3
+          name: AUTISMIDOL-AUTOTUNE.vst3
+          path: build/HardTune_artefacts/Release/VST3/AUTISMIDOL AUTOTUNE.vst3
           if-no-files-found: error
 
       # ----------------------------------------------------------------
@@ -98,19 +98,19 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir pkg-components dist-installer
-          pkgbuild --component build/HardTune_artefacts/Release/AU/HardTune.component \
+          pkgbuild --component "build/HardTune_artefacts/Release/AU/AUTISMIDOL AUTOTUNE.component" \
                    --install-location /Library/Audio/Plug-Ins/Components \
                    --identifier com.belize2026.hardtune.au \
-                   --version 0.1.0 \
+                   --version 0.2.0 \
                    pkg-components/HardTune-AU.pkg
-          pkgbuild --component build/HardTune_artefacts/Release/VST3/HardTune.vst3 \
+          pkgbuild --component "build/HardTune_artefacts/Release/VST3/AUTISMIDOL AUTOTUNE.vst3" \
                    --install-location /Library/Audio/Plug-Ins/VST3 \
                    --identifier com.belize2026.hardtune.vst3 \
-                   --version 0.1.0 \
+                   --version 0.2.0 \
                    pkg-components/HardTune-VST3.pkg
           productbuild --package pkg-components/HardTune-AU.pkg \
                        --package pkg-components/HardTune-VST3.pkg \
-                       dist-installer/HardTune-Installer-macOS.pkg
+                       dist-installer/AUTISMIDOL-AUTOTUNE-Installer-macOS.pkg
 
       - name: Build installer (Windows)
         if: runner.os == 'Windows'
@@ -146,8 +146,8 @@ jobs:
       - name: Collect release files
         run: |
           mkdir release
-          cp artifacts/HardTune-Installer-macOS/HardTune-Installer-macOS.pkg release/
-          cp artifacts/HardTune-Installer-Windows/HardTune-Installer-Windows.exe release/
+          cp artifacts/HardTune-Installer-macOS/AUTISMIDOL-AUTOTUNE-Installer-macOS.pkg release/
+          cp artifacts/HardTune-Installer-Windows/AUTISMIDOL-AUTOTUNE-Installer-Windows.exe release/
           cp artifacts/HardTune-macOS/*.zip release/
           cp artifacts/HardTune-Windows/*.zip release/
           cp artifacts/HardTune-Linux/*.zip release/
@@ -163,12 +163,12 @@ jobs:
           body: |
             ## Installing
 
-            **macOS (Logic Pro etc.):** download `HardTune-Installer-macOS.pkg`,
+            **macOS (Logic Pro etc.):** download `AUTISMIDOL-AUTOTUNE-Installer-macOS.pkg`,
             right-click it → Open (it is unsigned), and follow the installer.
             It puts the AU and VST3 into `/Library/Audio/Plug-Ins`. Then rescan
             your plugins (Logic: Settings → Plug-in Manager).
 
-            **Windows:** download `HardTune-Installer-Windows.exe`. If SmartScreen
+            **Windows:** download `AUTISMIDOL-AUTOTUNE-Installer-Windows.exe`. If SmartScreen
             appears, click "More info" → "Run anyway", then follow the installer.
             It puts the VST3 into `C:\Program Files\Common Files\VST3`. Then
             rescan your plugins in your DAW.

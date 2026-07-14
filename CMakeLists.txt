@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(HardTune VERSION 0.1.0 LANGUAGES C CXX)
+project(HardTune VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,7 +26,7 @@ FetchContent_MakeAvailable(JUCE)
 option(HARDTUNE_COPY_PLUGIN "Copy built plugins into the system plugin folders" ON)
 
 juce_add_plugin(HardTune
-    PRODUCT_NAME                "HardTune"
+    PRODUCT_NAME                "AUTISMIDOL AUTOTUNE"
     COMPANY_NAME                "Belize2026"
     BUNDLE_ID                   "com.belize2026.hardtune"
     PLUGIN_MANUFACTURER_CODE    Blze
