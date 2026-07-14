@@ -155,10 +155,15 @@ jobs:
           cp artifacts/HardTune-Linux/*.zip release/
           ls -l release
 
+      # Create the release as a DRAFT first: drafts are invisible to
+      # /releases/latest, so the download links never point at a release
+      # whose files are still uploading (that window used to 404).
       - uses: softprops/action-gh-release@v2
+        id: draft_release
         with:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
+          draft: true
           files: release/*
           fail_on_unmatched_files: true
           generate_release_notes: true
@@ -177,3 +182,29 @@ jobs:
 
             The zip files are the raw plugin bundles for manual installation —
             see the README for where to copy them.
+
+      # Flip the draft live only after every asset is fully uploaded.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sf -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.draft_release.outputs.id }}" \
+            -d '{"draft": false, "make_latest": "true"}' > /dev/null
+          echo "Release published"
+
+      # Prove the user-facing links actually work before calling it done.
+      - name: Verify download links
+        run: |
+          sleep 15
+          for file in AUTISMIDOL-AUTOTUNE-Installer-macOS.pkg AUTISMIDOL-AUTOTUNE-Installer-Windows.exe; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -L \
+              "https://github.com/${{ github.repository }}/releases/latest/download/$file")
+            echo "$file -> HTTP $code"
+            if [ "$code" != "200" ]; then
+              echo "Download link broken!" >&2
+              exit 1
+            fi
+          done
