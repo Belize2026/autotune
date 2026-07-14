@@ -58,6 +58,7 @@ private:
     std::atomic<float>* powerParam   = nullptr;
     std::atomic<float>* keyParam     = nullptr;
     std::atomic<float>* scaleParam   = nullptr;
+    std::atomic<float>* snapParam    = nullptr;
     std::atomic<float>* formantParam = nullptr;
     std::atomic<float>* dualParam    = nullptr;
     std::atomic<float>* dualMixParam = nullptr;

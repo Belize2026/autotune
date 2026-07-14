@@ -23,14 +23,15 @@ private:
     juce::Rectangle<int> headerArea; // logo-style title painted in paint()
     juce::TextButton powerButton, dualButton;
     juce::ComboBox keyBox, scaleBox;
-    juce::Slider formantDial, dualMixDial, echoDial, reverbDial;
-    juce::Label keyLabel, scaleLabel, dualLabel, formantLabel, dualMixLabel, echoLabel, reverbLabel;
+    juce::Slider snapSlider, formantDial, dualMixDial, echoDial, reverbDial;
+    juce::Label keyLabel, scaleLabel, dualLabel, snapLabel, extremeLabel, mildLabel,
+                formantLabel, dualMixLabel, echoLabel, reverbLabel;
     CorrectionDisplay display;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment, dualAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> keyAttachment, scaleAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
-        formantAttachment, dualMixAttachment, echoAttachment, reverbAttachment;
+        snapAttachment, formantAttachment, dualMixAttachment, echoAttachment, reverbAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HardTuneAudioProcessorEditor)
 };

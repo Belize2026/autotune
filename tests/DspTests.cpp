@@ -188,6 +188,32 @@ void testFormantShifter()
     }
 }
 
+void testExtremeSnapWindow()
+{
+    std::printf ("Extreme snap window (1.5 ms floor):\n");
+
+    const double sampleRate = 44100.0;
+    hardtune::PitchShifter shifter;
+    shifter.prepare (sampleRate);
+    shifter.setWindowSeconds (0.0); // dial at 0 -> clamps to the floor
+    shifter.setRatio (1.5);
+
+    auto sine = makeSine (220.0, sampleRate, 0.3);
+    float peak = 0.0f;
+    bool finite = true;
+    for (size_t i = 0; i < sine.size(); ++i)
+    {
+        const float out = shifter.processSample (sine[i]);
+        finite = finite && std::isfinite (out);
+        if (i > sine.size() / 2)
+            peak = std::max (peak, std::abs (out));
+    }
+
+    check (finite, "output stays finite");
+    check (peak > 0.05f && peak < 1.5f, "output level bounded",
+           "peak " + std::to_string (peak));
+}
+
 void testEcho()
 {
     std::printf ("Echo:\n");
@@ -221,6 +247,7 @@ int main()
     testQuantizer();
     testEndToEnd();
     testFormantShifter();
+    testExtremeSnapWindow();
     testEcho();
 
     std::printf ("==================\n%s\n", failures == 0 ? "All tests passed." : "TESTS FAILED");

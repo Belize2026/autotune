@@ -17,20 +17,30 @@ class PitchShifter
 public:
     void prepare (double sampleRate)
     {
-        // ~18 ms sweep window: short on purpose. Note changes land almost
-        // immediately and the extra modulation grit reads as robotic, which
-        // is the point of this plugin.
-        window = std::max (64.0, sampleRate * 0.018);
+        sr = sampleRate;
 
+        // Buffer sized for the largest window the SNAP control allows.
         int size = 1;
-        while (size < (int) window * 2)
+        while (size < (int) (sr * maxWindowSeconds) * 2)
             size <<= 1;
         mask = size - 1;
         buffer.assign ((size_t) size, 0.0f);
 
+        window = sr * 0.006; // default, overridden by the SNAP parameter
         writeCount = 0;
         phase = 0.0;
         ratio = 1.0;
+    }
+
+    // The crossfade/sweep window is the harshness control: shorter adds
+    // metallic modulation grit and cuts latency; below ~1.5 ms the taps sit
+    // inside a single vocal cycle and the shift degrades into pure buzz, so
+    // that's the floor. Corrections are instant at any setting.
+    void setWindowSeconds (double seconds) noexcept
+    {
+        window = std::clamp (seconds, minWindowSeconds, maxWindowSeconds) * sr;
+        while (phase >= window)
+            phase -= window;
     }
 
     // Applied immediately, no easing (zero glide by design).
@@ -92,10 +102,13 @@ private:
     }
 
     static constexpr double pi = 3.14159265358979323846;
+    static constexpr double minWindowSeconds = 0.0015;
+    static constexpr double maxWindowSeconds = 0.02;
 
     std::vector<float> buffer;
     int mask = 0;
     int64_t writeCount = 0;
+    double sr = 44100.0;
     double window = 0.0;
     double phase = 0.0;
     double ratio = 1.0;

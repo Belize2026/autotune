@@ -70,6 +70,34 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupCombo (scaleBox, "scale", scaleAttachment);
     setupLabel (dualLabel, "DUAL VOCALS");
 
+    // SNAP: horizontal harshness scale, 0 ms (extreme) .. 20 ms (softer).
+    setupLabel (snapLabel, "SNAP WINDOW");
+    snapSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+    snapSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 76, 18);
+    snapSlider.setTextValueSuffix (" ms");
+    snapSlider.setColour (juce::Slider::trackColourId, theme::teal);
+    snapSlider.setColour (juce::Slider::backgroundColourId, theme::control);
+    snapSlider.setColour (juce::Slider::thumbColourId, theme::pink);
+    snapSlider.setColour (juce::Slider::textBoxTextColourId, theme::text);
+    snapSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    snapSlider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible (snapSlider);
+    snapAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        apvts, "snap", snapSlider);
+
+    auto setupEndLabel = [this] (juce::Label& label, const juce::String& text,
+                                 juce::Justification just)
+    {
+        label.setText (text, juce::dontSendNotification);
+        label.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
+        label.setColour (juce::Label::textColourId, theme::pink);
+        label.setJustificationType (just);
+        addAndMakeVisible (label);
+    };
+    setupEndLabel (extremeLabel, "EXTREME", juce::Justification::centredLeft);
+    setupEndLabel (mildLabel, "NOT AS EXTREME", juce::Justification::centredRight);
+    mildLabel.setColour (juce::Label::textColourId, theme::textDim);
+
     setupLabel (formantLabel, "FORMANT");
     setupDial (formantDial, "formant", " st", formantAttachment);
     setupLabel (dualMixLabel, "DUAL MIX");
@@ -79,7 +107,7 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupLabel (reverbLabel, "REVERB");
     setupDial (reverbDial, "reverb", " %", reverbAttachment);
 
-    setSize (560, 478);
+    setSize (560, 540);
     startTimerHz (30);
 }
 
@@ -112,7 +140,7 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (theme::textDim);
     g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
-    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.3",
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.4",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -143,7 +171,17 @@ void HardTuneAudioProcessorEditor::resized()
     dualLabel.setBounds (dualArea.removeFromTop (16));
     dualButton.setBounds (dualArea.removeFromTop (30).withSizeKeepingCentre (84, 28));
 
-    area.removeFromTop (16);
+    area.removeFromTop (12);
+
+    // SNAP harshness scale with its end labels.
+    auto snapArea = area.removeFromTop (62).reduced (6, 0);
+    snapLabel.setBounds (snapArea.removeFromTop (16));
+    snapSlider.setBounds (snapArea.removeFromTop (26));
+    auto ends = snapArea.removeFromTop (14).withTrimmedRight (82); // skip the value box
+    extremeLabel.setBounds (ends.removeFromLeft (ends.getWidth() / 2));
+    mildLabel.setBounds (ends);
+
+    area.removeFromTop (12);
 
     // Dial row: Formant / Dual Mix / Echo / Reverb.
     auto dials = area.removeFromTop (150);

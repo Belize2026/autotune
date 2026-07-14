@@ -17,6 +17,7 @@ HardTuneAudioProcessor::HardTuneAudioProcessor()
     powerParam   = apvts.getRawParameterValue ("power");
     keyParam     = apvts.getRawParameterValue ("key");
     scaleParam   = apvts.getRawParameterValue ("scale");
+    snapParam    = apvts.getRawParameterValue ("snap");
     formantParam = apvts.getRawParameterValue ("formant");
     dualParam    = apvts.getRawParameterValue ("dual");
     dualMixParam = apvts.getRawParameterValue ("dualmix");
@@ -34,6 +35,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::crea
         juce::ParameterID { "key", 1 }, "Key", keyNames, 0));
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { "scale", 1 }, "Scale", scaleNames, 0));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "snap", 1 }, "Snap Window",
+        juce::NormalisableRange<float> (0.0f, 20.0f, 0.1f), 6.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "formant", 1 }, "Formant",
         juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
@@ -121,6 +126,10 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         applyPostEffects (buffer, false);
         return;
     }
+
+    // SNAP dial: 0 on the dial clamps to the shifter's ~1.5 ms floor —
+    // maximum grit. Corrections stay instant at every setting.
+    shifter.setWindowSeconds ((double) snapParam->load() * 0.001);
 
     samplesSinceDetection += numSamples;
     if (samplesSinceDetection >= detectionHopSamples)
