@@ -72,7 +72,8 @@ void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
     detector.prepare (sampleRate);
     shifter.prepare (sampleRate);
 
-    detectionHopSamples   = juce::jmax (64, (int) std::lround (sampleRate * 0.006));
+    // Re-detect roughly every 3 ms: corrections land essentially instantly.
+    detectionHopSamples   = juce::jmax (32, (int) std::lround (sampleRate * 0.003));
     samplesSinceDetection = detectionHopSamples; // detect on the first block
     currentRatio          = 1.0;
 
@@ -141,7 +142,10 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
         else
         {
-            currentRatio = 1.0;
+            // Unvoiced / uncertain frames HOLD the last ratio instead of
+            // easing back to dry — the tuner never relaxes its grip
+            // mid-phrase. (During real silence the ratio is inaudible
+            // anyway.) Harsh and artificial on purpose.
             detectedHz.store (0.0f);
             targetHz.store (0.0f);
         }

@@ -20,7 +20,7 @@ private:
     HardTuneAudioProcessor& processor;
     HardTuneLookAndFeel lookAndFeel; // declared before the components that use it
 
-    juce::Label titleLabel;
+    juce::Rectangle<int> headerArea; // logo-style title painted in paint()
     juce::TextButton powerButton, dualButton;
     juce::ComboBox keyBox, scaleBox;
     juce::Slider formantDial, dualMixDial, echoDial, reverbDial;

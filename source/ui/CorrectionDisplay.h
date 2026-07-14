@@ -31,9 +31,11 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        auto bounds = getLocalBounds().toFloat();
+        auto bounds = getLocalBounds().toFloat().reduced (1.0f);
         g.setColour (theme::panel);
-        g.fillRoundedRectangle (bounds, 10.0f);
+        g.fillRoundedRectangle (bounds, 12.0f);
+        g.setColour (theme::outline);
+        g.drawRoundedRectangle (bounds, 12.0f, 2.0f);
 
         auto plot = bounds.reduced (14.0f, 12.0f);
         plot.removeFromTop (16.0f); // caption strip
@@ -78,15 +80,17 @@ public:
             current = true;
         }
 
-        g.setColour (theme::accent.withAlpha (0.25f));
+        g.setColour (theme::teal.withAlpha (0.3f));
         g.strokePath (trace, { 5.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
-        g.setColour (theme::accent);
-        g.strokePath (trace, { 2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
+        g.setColour (theme::teal);
+        g.strokePath (trace, { 2.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
 
         if (current)
         {
-            g.setColour (juce::Colours::white);
-            g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre ({ lastX, lastY }));
+            g.setColour (theme::pink);
+            g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre ({ lastX, lastY }));
+            g.setColour (theme::outline);
+            g.drawEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre ({ lastX, lastY }), 1.2f);
         }
 
         // Caption and live note readout.

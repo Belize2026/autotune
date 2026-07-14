@@ -17,9 +17,10 @@ class PitchShifter
 public:
     void prepare (double sampleRate)
     {
-        // ~40 ms sweep window: the usual harmonizer trade-off between
-        // modulation artifacts (shorter) and transient smearing (longer).
-        window = std::max (64.0, sampleRate * 0.04);
+        // ~18 ms sweep window: short on purpose. Note changes land almost
+        // immediately and the extra modulation grit reads as robotic, which
+        // is the point of this plugin.
+        window = std::max (64.0, sampleRate * 0.018);
 
         int size = 1;
         while (size < (int) window * 2)

@@ -17,11 +17,6 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setLookAndFeel (&lookAndFeel);
     auto& apvts = processor.getValueTreeState();
 
-    titleLabel.setText ("AUTISMIDOL AUTOTUNE", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (juce::FontOptions (22.0f, juce::Font::bold)));
-    titleLabel.setColour (juce::Label::textColourId, theme::text);
-    addAndMakeVisible (titleLabel);
-
     powerButton.setClickingTogglesState (true);
     addAndMakeVisible (powerButton);
     powerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
@@ -57,8 +52,13 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
                                      const juce::String& suffix, auto& attachment)
     {
         dial.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-        dial.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 68, 16);
+        dial.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 72, 18);
         dial.setTextValueSuffix (suffix);
+        // Explicit per-component colours: the slider caches its text-box
+        // label colours before the editor's LookAndFeel is attached.
+        dial.setColour (juce::Slider::textBoxTextColourId, theme::text);
+        dial.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+        dial.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
         addAndMakeVisible (dial);
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
             apvts, paramID, dial);
@@ -92,9 +92,27 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (theme::background);
 
-    g.setColour (theme::textDim.withAlpha (0.5f));
-    g.setFont (juce::Font (juce::FontOptions (10.5f)));
-    g.drawText ("zero-glide hard pitch snap  |  v0.1",
+    // Logo-style header: hot pink "IDOL" peeking out from behind metallic
+    // teal "AUTISM", both with the sticker outline, like the artwork.
+    const juce::Font big (juce::FontOptions (34.0f, juce::Font::bold));
+    juce::GlyphArrangement measure;
+    measure.addLineOfText (big, "AUTISM", 0.0f, 0.0f);
+    const float autismWidth = measure.getBoundingBox (0, -1, true).getWidth();
+
+    const float hx = (float) headerArea.getX();
+    const float baseline = (float) headerArea.getBottom() - 8.0f;
+
+    g.setFont (big);
+    g.setColour (theme::pink);
+    g.drawSingleLineText ("IDOL", (int) (hx + autismWidth * 0.62f), (int) (baseline + 16.0f));
+    g.setColour (theme::outline);
+    g.drawSingleLineText ("AUTISM", (int) hx + 2, (int) baseline + 2); // outline shadow
+    g.setColour (theme::teal);
+    g.drawSingleLineText ("AUTISM", (int) hx, (int) baseline);
+
+    g.setColour (theme::textDim);
+    g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.3",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -103,9 +121,9 @@ void HardTuneAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (20);
 
-    auto header = area.removeFromTop (36);
-    powerButton.setBounds (header.removeFromRight (96).withSizeKeepingCentre (96, 32));
-    titleLabel.setBounds (header);
+    auto header = area.removeFromTop (40);
+    powerButton.setBounds (header.removeFromRight (96).withSizeKeepingCentre (96, 34));
+    headerArea = header;
 
     area.removeFromTop (12);
     display.setBounds (area.removeFromTop (128));

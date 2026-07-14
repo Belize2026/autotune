@@ -1,0 +1,28 @@
+#!/bin/bash
+# Remove every previously installed copy of the plugin (current and legacy
+# "HardTune" names, system and per-user folders) so upgrades never leave
+# stale versions eating disk space or confusing DAW scans.
+
+set -u
+
+remove_all() {
+    local base="$1"
+    rm -rf "$base/Components/HardTune.component" \
+           "$base/Components/AUTISMIDOL AUTOTUNE.component" \
+           "$base/VST3/HardTune.vst3" \
+           "$base/VST3/AUTISMIDOL AUTOTUNE.vst3"
+}
+
+remove_all "/Library/Audio/Plug-Ins"
+
+# Also clean the logged-in user's per-user plugin folders (installer runs
+# as root, so resolve the console user's home first).
+console_user=$(stat -f%Su /dev/console 2>/dev/null || true)
+if [ -n "${console_user:-}" ] && [ "$console_user" != "root" ]; then
+    user_home=$(dscl . -read "/Users/$console_user" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
+    if [ -n "${user_home:-}" ] && [ -d "$user_home" ]; then
+        remove_all "$user_home/Library/Audio/Plug-Ins"
+    fi
+fi
+
+exit 0

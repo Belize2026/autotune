@@ -26,9 +26,10 @@ public:
                   float maxFrequencyHz = 1000.0f)
     {
         sr     = sampleRate;
-        // ~23 ms integration window: long enough for one full period of a low
-        // male vocal fundamental, short enough to keep the correction snappy.
-        window = std::max (256, (int) std::lround (sr * 0.023));
+        // ~12 ms integration window: deliberately short. The estimate reacts
+        // almost instantly and jitters on its way — that twitchiness is the
+        // product, not a defect.
+        window = std::max (256, (int) std::lround (sr * 0.012));
         maxLag = std::max (window / 4, (int) std::lround (sr / minFrequencyHz));
         minLag = std::max (2, (int) std::lround (sr / maxFrequencyHz));
 
@@ -103,6 +104,21 @@ public:
             }
         }
 
+        // Aggressive fallback: if nothing dipped under the strict threshold,
+        // grab the best candidate anyway unless it's clearly aperiodic. The
+        // tuner should clamp onto marginal, breathy frames rather than let
+        // them slip through untuned.
+        if (tauEstimate < 0)
+        {
+            int bestTau = minLag;
+            for (int tau = minLag + 1; tau <= maxLag; ++tau)
+                if (cmnd[(size_t) tau] < cmnd[(size_t) bestTau])
+                    bestTau = tau;
+
+            if (cmnd[(size_t) bestTau] < fallbackThreshold)
+                tauEstimate = bestTau;
+        }
+
         if (tauEstimate < 0)
             return result; // unvoiced
 
@@ -131,8 +147,9 @@ private:
     int window = 0, minLag = 0, maxLag = 0, bufferSize = 0;
     int writePos = 0, filled = 0;
 
-    static constexpr float threshold  = 0.15f;   // YIN aperiodicity threshold
-    static constexpr double silenceRms = 1.0e-3; // ~ -60 dBFS gate
+    static constexpr float threshold         = 0.15f; // YIN aperiodicity threshold
+    static constexpr float fallbackThreshold = 0.35f; // grab-anyway ceiling
+    static constexpr double silenceRms = 1.0e-3;      // ~ -60 dBFS gate
 
     std::vector<float> ring, linear, cmnd;
 };

@@ -63,8 +63,10 @@ artifacts.
 ## v1 scope
 
 - Mono vocal input expected
-- YIN pitch detection over a small (~23 ms) window — speed over smoothness,
-  detection jitter is deliberately left in for the glitch character
+- YIN pitch detection over a tiny (~12 ms) window, re-checked every ~3 ms,
+  with an aggressive grab-anyway fallback on marginal frames — the tuner
+  clamps on instantly and never relaxes mid-phrase. Harsh and artificial on
+  purpose; that is the selling point
 - Hard quantisation to the nearest note of the selected key/scale: zero
   tolerance, zero glide, no partial correction
 - Time-domain pitch shifting (dual-tap crossfaded delay line), no formant
@@ -198,7 +200,9 @@ tested and iterated on without a DAW in the loop.
 The two knobs to iterate on (in code, per the build plan) when comparing
 against the Melodyne/Auto-Tune chain:
 
-- Detection window: `sr * 0.023` in `PitchDetector::prepare` — shorter is
+- Detection window: `sr * 0.012` in `PitchDetector::prepare` — shorter is
   twitchier and more robotic, longer is steadier.
-- Shifter sweep window: `sr * 0.04` in `PitchShifter::prepare` — shorter means
+- Shifter sweep window: `sr * 0.018` in `PitchShifter::prepare` — shorter means
   more modulation artifacts, longer smears transients.
+- Grab aggression: `fallbackThreshold` in `PitchDetector` — higher grabs even
+  noisier frames.
