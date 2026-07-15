@@ -60,11 +60,12 @@ private:
     std::atomic<float>* keyParam     = nullptr;
     std::atomic<float>* scaleParam   = nullptr;
     std::atomic<float>* cronkParam   = nullptr;
-    std::atomic<float>* formantParam   = nullptr;
-    std::atomic<float>* dualLevelParam = nullptr;
-    // Stackable harmony voices: 3rd, 5th, octave up, octave down.
+    std::atomic<float>* formantParam = nullptr;
+    // Four harmony slots, each with an interval choice (None/+-3rd/5th/oct)
+    // and its own mix level.
     static constexpr int numHarmonyVoices = 4;
-    std::atomic<float>* harmonyParams[numHarmonyVoices] = {};
+    std::atomic<float>* harmonyParams[numHarmonyVoices]    = {};
+    std::atomic<float>* harmonyMixParams[numHarmonyVoices] = {};
     std::atomic<float>* echoParam    = nullptr;
     std::atomic<float>* reverbParam  = nullptr;
 

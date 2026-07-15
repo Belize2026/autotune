@@ -69,19 +69,25 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupLabel (scaleLabel, "SCALE");
     setupCombo (scaleBox, "scale", scaleAttachment);
 
-    // Stackable harmony voices: tick any combination.
-    setupLabel (dualLabel, "HARMONY (STACK ANY)");
-    static const char* harmonyIDs[]     = { "h3rd", "h5th", "hoctup", "hoctdown" };
-    static const char* harmonyText[]    = { "3RD", "5TH", "OCT +", "OCT -" };
+    // Four harmony slots (2x2 grid): interval dropdown + own MIX knob each.
+    setupLabel (harmonySectionLabel, "HARMONIES  (UP TO 4 VOICES UNDER THE LEAD)");
     for (int v = 0; v < 4; ++v)
     {
-        auto& button = harmonyButtons[v];
-        button.setButtonText (harmonyText[v]);
-        button.setClickingTogglesState (true);
-        button.setColour (juce::TextButton::buttonOnColourId, theme::teal);
-        addAndMakeVisible (button);
-        harmonyAttachments[v] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-            apvts, harmonyIDs[v], button);
+        const auto num = juce::String (v + 1);
+        setupLabel (harmonyLabels[v], "HARMONY " + num);
+        harmonyLabels[v].setJustificationType (juce::Justification::centredLeft);
+        setupCombo (harmonyBoxes[v], "harm" + num, harmonyAttachments[v]);
+
+        setupLabel (mixLabels[v], "MIX " + num);
+        auto& mixSlider = mixSliders[v];
+        mixSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+        mixSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        mixSlider.setColour (juce::Slider::trackColourId, theme::teal);
+        mixSlider.setColour (juce::Slider::backgroundColourId, theme::control);
+        mixSlider.setColour (juce::Slider::thumbColourId, theme::pink);
+        addAndMakeVisible (mixSlider);
+        mixAttachments[v] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+            apvts, "mix" + num, mixSlider);
     }
 
     // CRONK: the big centre dial, 0% = softest texture, 100% = maximum
@@ -89,8 +95,6 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupLabel (cronkLabel, "CRONK");
     setupDial (cronkDial, "cronk", " %", cronkAttachment);
     cronkDial.getProperties().set ("inverted", true);
-    setupLabel (dualLevelLabel, "DUAL LEVEL");
-    setupDial (dualLevelDial, "duallevel", " %", dualLevelAttachment);
     setupLabel (formantLabel, "FORMANT");
     setupDial (formantDial, "formant", " st", formantAttachment);
     setupLabel (echoLabel, "ECHO");
@@ -110,7 +114,7 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupEndLabel (mildLabel, "LESS", juce::Justification::centredLeft, theme::textDim);
     setupEndLabel (extremeLabel, "EXTREME", juce::Justification::centredRight, theme::pink);
 
-    setSize (560, 520);
+    setSize (560, 600);
     startTimerHz (30);
 }
 
@@ -137,7 +141,7 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (theme::textDim);
     g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
-    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.9",
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.10",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -154,32 +158,44 @@ void HardTuneAudioProcessorEditor::resized()
     display.setBounds (area.removeFromTop (122));
     area.removeFromTop (14);
 
-    // Key / Scale / Harmony row.
-    auto row = area.removeFromTop (64);
-    const int colW = row.getWidth() / 3;
-    auto keyArea = row.removeFromLeft (colW).reduced (6, 0);
-    auto scaleArea = row.removeFromLeft (colW).reduced (6, 0);
-    auto harmonyArea = row.reduced (6, 0);
+    // Key / Scale row.
+    auto row = area.removeFromTop (48);
+    auto keyArea = row.removeFromLeft (row.getWidth() / 2).reduced (6, 0);
+    auto scaleArea = row.reduced (6, 0);
 
     keyLabel.setBounds (keyArea.removeFromTop (16));
     keyBox.setBounds (keyArea.removeFromTop (30));
     scaleLabel.setBounds (scaleArea.removeFromTop (16));
     scaleBox.setBounds (scaleArea.removeFromTop (30));
 
-    dualLabel.setBounds (harmonyArea.removeFromTop (16));
-    auto harmonyTop = harmonyArea.removeFromTop (22);
-    auto harmonyBottom = harmonyArea.removeFromTop (22).translated (0, 2);
-    harmonyButtons[0].setBounds (harmonyTop.removeFromLeft (harmonyTop.getWidth() / 2).reduced (2, 1));
-    harmonyButtons[1].setBounds (harmonyTop.reduced (2, 1));
-    harmonyButtons[2].setBounds (harmonyBottom.removeFromLeft (harmonyBottom.getWidth() / 2).reduced (2, 1));
-    harmonyButtons[3].setBounds (harmonyBottom.reduced (2, 1));
+    area.removeFromTop (10);
 
-    area.removeFromTop (14);
+    // Harmony section: 2x2 grid, each slot = interval dropdown + MIX knob.
+    harmonySectionLabel.setBounds (area.removeFromTop (14));
+    for (int gridRow = 0; gridRow < 2; ++gridRow)
+    {
+        auto slotRow = area.removeFromTop (46);
+        for (int gridCol = 0; gridCol < 2; ++gridCol)
+        {
+            const int v = gridRow * 2 + gridCol;
+            auto cell = slotRow.removeFromLeft (slotRow.getWidth() / (2 - gridCol)).reduced (6, 2);
 
-    // Dial row: Dual Level / Formant / BIG CRONK (centre) / Echo / Reverb.
+            auto comboPart = cell.removeFromLeft (cell.getWidth() / 2);
+            harmonyLabels[v].setBounds (comboPart.removeFromTop (14));
+            harmonyBoxes[v].setBounds (comboPart.removeFromTop (26));
+
+            cell.removeFromLeft (6);
+            mixLabels[v].setBounds (cell.removeFromTop (14));
+            mixSliders[v].setBounds (cell.removeFromTop (26));
+        }
+    }
+
+    area.removeFromTop (10);
+
+    // Dial row: Formant / BIG CRONK (centre) / Echo / Reverb.
     auto dials = area.removeFromTop (168);
-    const int bigW = 168;
-    const int smallW = (dials.getWidth() - bigW) / 4;
+    const int bigW = 180;
+    const int smallW = (dials.getWidth() - bigW) / 3;
 
     auto layoutSmall = [&dials, smallW] (juce::Label& label, juce::Slider& dial)
     {
@@ -188,7 +204,6 @@ void HardTuneAudioProcessorEditor::resized()
         dial.setBounds (cell.withTrimmedBottom (34));
     };
 
-    layoutSmall (dualLevelLabel, dualLevelDial);
     layoutSmall (formantLabel, formantDial);
 
     auto cronkCell = dials.removeFromLeft (bigW).reduced (2, 0);
