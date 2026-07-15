@@ -94,6 +94,41 @@ public:
                                const juce::Colour& backgroundColour,
                                bool isHighlighted, bool isDown) override
     {
+        // The power control renders as a horizontal 1/0 rocker switch:
+        // orange track when on, knob sliding between the digits.
+        if ((bool) button.getProperties()["powerSwitch"])
+        {
+            const bool on = button.getToggleState();
+            const juce::Colour orange (0xffff8c1a);
+
+            auto track = button.getLocalBounds().toFloat().reduced (1.0f);
+            const float corner = track.getHeight() * 0.5f;
+
+            g.setColour (on ? orange : theme::control);
+            g.fillRoundedRectangle (track, corner);
+            g.setColour (theme::outline);
+            g.drawRoundedRectangle (track, corner, 2.0f);
+
+            g.setFont (juce::Font (juce::FontOptions (14.0f, juce::Font::bold)));
+            g.setColour (on ? juce::Colours::white : theme::textDim);
+            g.drawText ("0", track.removeFromLeft (track.getWidth() * 0.5f),
+                        juce::Justification::centred);
+            g.setColour (on ? juce::Colours::white : theme::text);
+            g.drawText ("1", track, juce::Justification::centred);
+
+            auto full = button.getLocalBounds().toFloat().reduced (4.0f);
+            const float knobSize = full.getHeight();
+            auto knob = juce::Rectangle<float> (knobSize, knobSize)
+                            .withCentre ({ on ? full.getRight() - knobSize * 0.5f
+                                              : full.getX() + knobSize * 0.5f,
+                                           full.getCentreY() });
+            g.setColour (juce::Colours::white);
+            g.fillEllipse (knob);
+            g.setColour (theme::outline);
+            g.drawEllipse (knob, 2.0f);
+            return;
+        }
+
         auto bounds = button.getLocalBounds().toFloat().reduced (1.0f);
         const float corner = bounds.getHeight() * 0.5f; // pill
 

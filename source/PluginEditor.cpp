@@ -22,6 +22,7 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     logo = juce::ImageCache::getFromMemory (BinaryData::logo_png, BinaryData::logo_pngSize);
 
     powerButton.setClickingTogglesState (true);
+    powerButton.getProperties().set ("powerSwitch", true); // 1/0 rocker look
     addAndMakeVisible (powerButton);
     powerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         apvts, "power", powerButton);
@@ -136,7 +137,7 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (theme::textDim);
     g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
-    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.8",
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.9",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -203,8 +204,6 @@ void HardTuneAudioProcessorEditor::resized()
 
 void HardTuneAudioProcessorEditor::timerCallback()
 {
-    powerButton.setButtonText (powerButton.getToggleState() ? "ON" : "OFF");
-
     const float detected = processor.detectedHz.load();
     const float target   = processor.targetHz.load();
 

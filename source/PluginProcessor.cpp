@@ -81,8 +81,15 @@ void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     detector.prepare (sampleRate);
     shifter.prepare (sampleRate);
-    for (auto& harmony : harmonyShifters)
-        harmony.prepare (sampleRate);
+    // Harmony voices use their own smooth fixed window (independent of the
+    // CRONK grit control) and staggered sweep phases so stacked voices
+    // don't comb-filter against each other.
+    for (int v = 0; v < numHarmonyVoices; ++v)
+    {
+        harmonyShifters[v].prepare (sampleRate);
+        harmonyShifters[v].setWindowSeconds (0.035);
+        harmonyShifters[v].setPhase (0.125 + 0.25 * (double) v);
+    }
 
     // Re-detect roughly every 3 ms: corrections land essentially instantly.
     detectionHopSamples   = juce::jmax (32, (int) std::lround (sampleRate * 0.003));
@@ -144,8 +151,6 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     const double cronkWindow =
         hardtune::PitchShifter::cronkToWindowSeconds ((double) cronkParam->load());
     shifter.setWindowSeconds (cronkWindow);
-    for (auto& harmony : harmonyShifters)
-        harmony.setWindowSeconds (cronkWindow);
 
     samplesSinceDetection += numSamples;
     if (samplesSinceDetection >= detectionHopSamples)

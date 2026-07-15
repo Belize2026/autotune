@@ -56,6 +56,13 @@ public:
             phase -= window;
     }
 
+    // Offsets the tap sweep position (0..1 of the window). Stacked voices
+    // get different offsets so they don't comb-filter against each other.
+    void setPhase (double fraction) noexcept
+    {
+        phase = std::clamp (fraction, 0.0, 0.999) * window;
+    }
+
     // Effectively instant: the ~5 ms internal ramp is a de-clicker, not a
     // glide. Note jumps still sound like hard snaps.
     void setRatio (double newRatio) noexcept
