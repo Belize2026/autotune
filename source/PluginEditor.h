@@ -3,6 +3,7 @@
 #include "PluginProcessor.h"
 #include "ui/CorrectionDisplay.h"
 #include "ui/HardTuneLookAndFeel.h"
+#include "ui/LevelMeter.h"
 
 class HardTuneAudioProcessorEditor : public juce::AudioProcessorEditor,
                                      private juce::Timer
@@ -23,8 +24,10 @@ private:
     juce::Rectangle<int> headerArea; // logo drawn in paint()
     juce::Image logo;
     juce::TextButton powerButton;
-    juce::ComboBox keyBox, scaleBox;
-    // Four harmony slots in a 2x2 grid: interval dropdown + mix knob each.
+    juce::TextButton keyButtons[12]; // C..B strip, radio-style
+    juce::ComboBox scaleBox;
+    // Four harmony slots: interval dropdowns (2x2) + mini MIX dials in the
+    // dial section.
     juce::ComboBox harmonyBoxes[4];
     juce::Slider mixSliders[4];
     juce::Label harmonyLabels[4], mixLabels[4];
@@ -32,10 +35,11 @@ private:
     juce::Label keyLabel, scaleLabel, harmonySectionLabel, cronkLabel, extremeLabel, mildLabel,
                 formantLabel, echoLabel, reverbLabel;
     CorrectionDisplay display;
+    LevelMeter meter;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
-        keyAttachment, scaleAttachment, harmonyAttachments[4];
+        scaleAttachment, harmonyAttachments[4];
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         mixAttachments[4], cronkAttachment, formantAttachment, echoAttachment, reverbAttachment;
 

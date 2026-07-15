@@ -94,8 +94,9 @@ public:
                                const juce::Colour& backgroundColour,
                                bool isHighlighted, bool isDown) override
     {
-        // The power control renders as a horizontal 1/0 rocker switch:
-        // orange track when on, knob sliding between the digits.
+        // The power control renders as a hardware-style 1/0 rocker switch:
+        // recessed track with a shaded gradient, engraved digits, and a
+        // dimensional sliding knob. Orange when on.
         if ((bool) button.getProperties()["powerSwitch"])
         {
             const bool on = button.getToggleState();
@@ -104,28 +105,53 @@ public:
             auto track = button.getLocalBounds().toFloat().reduced (1.0f);
             const float corner = track.getHeight() * 0.5f;
 
-            g.setColour (on ? orange : theme::control);
+            const juce::Colour base = on ? orange : theme::control;
+            juce::ColourGradient trackShade (base.darker (0.35f), 0.0f, track.getY(),
+                                             base.brighter (0.08f), 0.0f, track.getBottom(), false);
+            g.setGradientFill (trackShade);
             g.fillRoundedRectangle (track, corner);
+
+            // Inner shadow lip for the recessed look.
+            g.setColour (juce::Colours::black.withAlpha (0.25f));
+            g.drawRoundedRectangle (track.reduced (1.5f), corner - 1.5f, 2.0f);
             g.setColour (theme::outline);
             g.drawRoundedRectangle (track, corner, 2.0f);
 
+            // Engraved digits: dark drop under a light face.
+            auto digits = track;
+            auto zeroArea = digits.removeFromLeft (digits.getWidth() * 0.5f);
             g.setFont (juce::Font (juce::FontOptions (14.0f, juce::Font::bold)));
-            g.setColour (on ? juce::Colours::white : theme::textDim);
-            g.drawText ("0", track.removeFromLeft (track.getWidth() * 0.5f),
-                        juce::Justification::centred);
-            g.setColour (on ? juce::Colours::white : theme::text);
-            g.drawText ("1", track, juce::Justification::centred);
+            for (auto pair : { std::pair<juce::Rectangle<float>, const char*> { zeroArea, "0" },
+                               { digits, "1" } })
+            {
+                g.setColour (juce::Colours::black.withAlpha (0.35f));
+                g.drawText (pair.second, pair.first.translated (0.0f, 1.0f),
+                            juce::Justification::centred);
+                g.setColour (on ? juce::Colours::white : theme::textDim.withAlpha (0.9f));
+                g.drawText (pair.second, pair.first, juce::Justification::centred);
+            }
 
+            // Dimensional knob with a specular highlight.
             auto full = button.getLocalBounds().toFloat().reduced (4.0f);
             const float knobSize = full.getHeight();
             auto knob = juce::Rectangle<float> (knobSize, knobSize)
                             .withCentre ({ on ? full.getRight() - knobSize * 0.5f
                                               : full.getX() + knobSize * 0.5f,
                                            full.getCentreY() });
-            g.setColour (juce::Colours::white);
+
+            g.setColour (juce::Colours::black.withAlpha (0.3f)); // drop shadow
+            g.fillEllipse (knob.translated (0.0f, 1.5f));
+
+            juce::ColourGradient knobShade (juce::Colours::white, knob.getCentreX(), knob.getY(),
+                                            juce::Colour (0xffc9c7c1), knob.getCentreX(), knob.getBottom(), false);
+            g.setGradientFill (knobShade);
             g.fillEllipse (knob);
             g.setColour (theme::outline);
             g.drawEllipse (knob, 2.0f);
+
+            g.setColour (juce::Colours::white.withAlpha (0.85f));
+            g.fillEllipse (knob.reduced (knob.getWidth() * 0.28f)
+                               .translated (0.0f, -knob.getHeight() * 0.16f));
             return;
         }
 

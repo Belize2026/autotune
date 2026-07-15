@@ -47,12 +47,14 @@ public:
     // Live readout for the editor (0 = unvoiced / bypassed).
     std::atomic<float> detectedHz { 0.0f };
     std::atomic<float> targetHz   { 0.0f };
+    std::atomic<float> outputPeak { 0.0f }; // block peak, editor consumes+resets
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     void applyFormantStage (float* channel, int numSamples);
     void applyDualStage (float* channel, int numSamples);
+    void reportOutputPeak (const juce::AudioBuffer<float>& buffer);
     void applyPostEffects (juce::AudioBuffer<float>& buffer, bool tuneWasApplied);
 
     juce::AudioProcessorValueTreeState apvts;

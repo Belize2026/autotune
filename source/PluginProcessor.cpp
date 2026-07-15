@@ -149,6 +149,7 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
         // The tune chain passes dry, but echo and reverb stay independent.
         applyPostEffects (buffer, false);
+        reportOutputPeak (buffer);
         return;
     }
 
@@ -225,6 +226,15 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     for (int ch = 1; ch < numChannels; ++ch)
         buffer.copyFrom (ch, 0, channel, numSamples);
+
+    reportOutputPeak (buffer);
+}
+
+void HardTuneAudioProcessor::reportOutputPeak (const juce::AudioBuffer<float>& buffer)
+{
+    const float peak = buffer.getMagnitude (0, 0, buffer.getNumSamples());
+    if (peak > outputPeak.load())
+        outputPeak.store (peak);
 }
 
 void HardTuneAudioProcessor::applyFormantStage (float* channel, int numSamples)
