@@ -71,6 +71,8 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupLabel (cronkLabel, "CRONK");
     setupDial (cronkDial, "cronk", " %", cronkAttachment);
     cronkDial.getProperties().set ("clockFace", true);
+    setupLabel (dualLevelLabel, "DUAL LEVEL");
+    setupDial (dualLevelDial, "duallevel", " %", dualLevelAttachment);
     setupLabel (formantLabel, "FORMANT");
     setupDial (formantDial, "formant", " st", formantAttachment);
     setupLabel (echoLabel, "ECHO");
@@ -123,7 +125,7 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (theme::textDim);
     g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
-    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.6",
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.7",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -156,9 +158,9 @@ void HardTuneAudioProcessorEditor::resized()
 
     area.removeFromTop (14);
 
-    // Dial row: Cronk / Formant / Echo / Reverb.
+    // Dial row: Cronk / Dual Level / Formant / Echo / Reverb.
     auto dials = area.removeFromTop (150);
-    const int dialW = dials.getWidth() / 4;
+    const int dialW = dials.getWidth() / 5;
     const auto cronkCell = dials.withWidth (dialW); // for the end labels below
 
     auto layoutDial = [&dials, dialW] (juce::Label& label, juce::Slider& dial)
@@ -169,6 +171,7 @@ void HardTuneAudioProcessorEditor::resized()
     };
 
     layoutDial (cronkLabel, cronkDial);
+    layoutDial (dualLevelLabel, dualLevelDial);
     layoutDial (formantLabel, formantDial);
     layoutDial (echoLabel, echoDial);
     layoutDial (reverbLabel, reverbDial);
@@ -177,7 +180,7 @@ void HardTuneAudioProcessorEditor::resized()
     auto cronkEnds = area.removeFromTop (12)
                          .withX (cronkCell.getX())
                          .withWidth (dialW)
-                         .reduced (14, 0);
+                         .reduced (8, 0);
     mildLabel.setBounds (cronkEnds.removeFromLeft (cronkEnds.getWidth() / 2));
     extremeLabel.setBounds (cronkEnds);
 }
@@ -191,14 +194,13 @@ void HardTuneAudioProcessorEditor::timerCallback()
 
     if (detected > 0.0f && target > 0.0f)
     {
-        display.push (hardtune::Quantizer::frequencyToMidi (detected),
-                      hardtune::Quantizer::frequencyToMidi (target),
-                      true);
+        const float cents = 1200.0f * std::log2 (target / detected);
+        display.update (cents, true);
         display.setStatusText (noteNameForHz (target));
     }
     else
     {
-        display.push (0.0f, 0.0f, false);
+        display.update (0.0f, false);
         display.setStatusText (powerButton.getToggleState() ? juce::String() : "BYPASSED");
     }
 }

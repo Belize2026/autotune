@@ -60,8 +60,9 @@ private:
     std::atomic<float>* keyParam     = nullptr;
     std::atomic<float>* scaleParam   = nullptr;
     std::atomic<float>* cronkParam   = nullptr;
-    std::atomic<float>* formantParam = nullptr;
-    std::atomic<float>* dualParam    = nullptr;
+    std::atomic<float>* formantParam   = nullptr;
+    std::atomic<float>* dualParam      = nullptr;
+    std::atomic<float>* dualLevelParam = nullptr;
     std::atomic<float>* echoParam    = nullptr;
     std::atomic<float>* reverbParam  = nullptr;
 

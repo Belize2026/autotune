@@ -75,6 +75,21 @@ public:
         return bestNote;
     }
 
+    // Walks `degrees` scale steps up (positive) or down (negative) from a
+    // note that is already in the scale — used for diatonic harmonies.
+    int stepInScale (int midiNote, int degrees) const noexcept
+    {
+        int note = midiNote;
+        const int direction = degrees >= 0 ? 1 : -1;
+        for (int taken = 0; taken != degrees; taken += direction)
+        {
+            do
+                note += direction;
+            while (! allowed[((note % 12) + 12) % 12]);
+        }
+        return note;
+    }
+
     float snapFrequencyHz (float frequencyHz) const noexcept
     {
         const float midi = frequencyToMidi (frequencyHz);

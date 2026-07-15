@@ -6,7 +6,7 @@ namespace
 const juce::StringArray keyNames { "C", "C#", "D", "D#", "E", "F",
                                    "F#", "G", "G#", "A", "A#", "B" };
 const juce::StringArray scaleNames { "Chromatic", "Major", "Minor", "Minor Pentatonic" };
-const juce::StringArray dualNames { "Off", "Pitch 1 (Up)", "Pitch 2 (Down)" };
+const juce::StringArray dualNames { "Off", "3rd Up", "5th Up", "Octave Up", "Octave Down" };
 } // namespace
 
 HardTuneAudioProcessor::HardTuneAudioProcessor()
@@ -19,8 +19,9 @@ HardTuneAudioProcessor::HardTuneAudioProcessor()
     keyParam     = apvts.getRawParameterValue ("key");
     scaleParam   = apvts.getRawParameterValue ("scale");
     cronkParam   = apvts.getRawParameterValue ("cronk");
-    formantParam = apvts.getRawParameterValue ("formant");
-    dualParam    = apvts.getRawParameterValue ("dual");
+    formantParam   = apvts.getRawParameterValue ("formant");
+    dualParam      = apvts.getRawParameterValue ("dual");
+    dualLevelParam = apvts.getRawParameterValue ("duallevel");
     echoParam    = apvts.getRawParameterValue ("echo");
     reverbParam  = apvts.getRawParameterValue ("reverb");
 }
@@ -44,7 +45,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::crea
         juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("st")));
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { "dual", 2 }, "Dual Vocals", dualNames, 0));
+        juce::ParameterID { "dual", 3 }, "Dual Vocals", dualNames, 0));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "duallevel", 1 }, "Dual Level",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 50.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "echo", 1 }, "Echo",
         juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
@@ -226,20 +231,39 @@ void HardTuneAudioProcessor::applyFormantStage (float* channel, int numSamples)
 
 void HardTuneAudioProcessor::applyDualStage (float* channel, int numSamples)
 {
-    // DUAL VOCALS: the main vocal stays on level; PITCH 1 layers an
-    // octave-up double underneath, PITCH 2 an octave-down double.
+    // DUAL VOCALS: the main vocal stays on level; a harmony voice is layered
+    // underneath at the DUAL LEVEL amount. 3rd/5th are scale-aware (they
+    // follow the selected key/scale like a real harmonizer); in Chromatic
+    // they fall back to fixed major-3rd/perfect-5th intervals.
     const int mode = (int) dualParam->load();
 
-    if (mode == 0)
+    if (mode == 0 || currentNoteMidi < 0)
     {
         for (int i = 0; i < numSamples; ++i)
             dualShifter.skipSample (channel[i]);
         return;
     }
 
-    dualShifter.setRatio (mode == 1 ? 2.0 : 0.5);
+    const bool chromatic =
+        (hardtune::Scale) (int) scaleParam->load() == hardtune::Scale::chromatic;
+
+    int harmonyMidi = currentNoteMidi;
+    switch (mode)
+    {
+        case 1: harmonyMidi = chromatic ? currentNoteMidi + 4
+                                        : quantizer.stepInScale (currentNoteMidi, 2);  break;
+        case 2: harmonyMidi = chromatic ? currentNoteMidi + 7
+                                        : quantizer.stepInScale (currentNoteMidi, 4);  break;
+        case 3: harmonyMidi = currentNoteMidi + 12; break;
+        case 4: harmonyMidi = currentNoteMidi - 12; break;
+        default: break;
+    }
+
+    dualShifter.setRatio (std::exp2 ((double) (harmonyMidi - currentNoteMidi) / 12.0));
+
+    const float level = dualLevelParam->load() * 0.01f;
     for (int i = 0; i < numSamples; ++i)
-        channel[i] += 0.5f * dualShifter.processSample (channel[i]);
+        channel[i] += level * dualShifter.processSample (channel[i]);
 }
 
 void HardTuneAudioProcessor::applyPostEffects (juce::AudioBuffer<float>& buffer, bool tuneWasApplied)

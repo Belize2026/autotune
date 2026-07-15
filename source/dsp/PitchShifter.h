@@ -9,9 +9,9 @@ namespace hardtune
 {
 
 // Time-domain pitch shifter: two delay-line taps swept at the shift rate and
-// crossfaded with complementary sin^2 windows. Cheap, low latency, and
-// deliberately unsmoothed — the ratio is applied the instant it changes,
-// which is what gives the zero-glide snap. Formants are not preserved (v1).
+// crossfaded with complementary sin^2 windows. Cheap and low latency. Ratio
+// changes land within ~5 ms (a de-click ramp, not a glide) so note jumps
+// sound clean but instant. Formants are not preserved (v1).
 class PitchShifter
 {
 public:
@@ -26,16 +26,20 @@ public:
         mask = size - 1;
         buffer.assign ((size_t) size, 0.0f);
 
-        window = sr * 0.018; // ~CRONK 50%, overridden by the parameter
+        window = sr * 0.026; // ~CRONK 50%, overridden by the parameter
         writeCount = 0;
         phase = 0.0;
         ratio = 1.0;
+        targetRatio = 1.0;
+        // Full-octave ratio change traverses in ~5 ms: far too fast to hear
+        // as a glide (the jump still sounds instant) but it removes the
+        // crunch a single-sample ratio step used to cause.
+        rampPerSample = 1.0 / (0.005 * sr);
     }
 
-    // CRONK maps 0..100% onto the sweep window, log-spaced: 0% = 40 ms
-    // (smooth), 100% = 8 ms (maximum grit). The floor is chosen so the
-    // voice stays intelligible: below ~8 ms the taps crowd inside a couple
-    // of vocal cycles and the output degrades into gibberish.
+    // CRONK maps 0..100% onto the sweep window, log-spaced: 0% = 50 ms
+    // (smooth), 100% = 14 ms (maximum usable grit). The floor is set where
+    // the sound stays clean enough for professional use.
     static double cronkToWindowSeconds (double percent) noexcept
     {
         const double t = std::clamp (percent, 0.0, 100.0) / 100.0;
@@ -52,15 +56,19 @@ public:
             phase -= window;
     }
 
-    // Applied immediately, no easing (zero glide by design).
+    // Effectively instant: the ~5 ms internal ramp is a de-clicker, not a
+    // glide. Note jumps still sound like hard snaps.
     void setRatio (double newRatio) noexcept
     {
-        ratio = std::clamp (newRatio, 0.25, 4.0);
+        targetRatio = std::clamp (newRatio, 0.25, 4.0);
     }
 
     float processSample (float input) noexcept
     {
         buffer[(size_t) (writeCount & (int64_t) mask)] = input;
+
+        if (ratio != targetRatio)
+            ratio += std::clamp (targetRatio - ratio, -rampPerSample, rampPerSample);
 
         // The tap delay drifts at (1 - ratio) samples per sample, i.e. the
         // taps read through the buffer at `ratio` times real time.
@@ -111,8 +119,8 @@ private:
     }
 
     static constexpr double pi = 3.14159265358979323846;
-    static constexpr double minWindowSeconds = 0.008;
-    static constexpr double maxWindowSeconds = 0.04;
+    static constexpr double minWindowSeconds = 0.014;
+    static constexpr double maxWindowSeconds = 0.05;
 
     std::vector<float> buffer;
     int mask = 0;
@@ -121,6 +129,8 @@ private:
     double window = 0.0;
     double phase = 0.0;
     double ratio = 1.0;
+    double targetRatio = 1.0;
+    double rampPerSample = 0.0;
 };
 
 } // namespace hardtune

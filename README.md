@@ -76,26 +76,29 @@ artifacts.
   Pentatonic), Cronk dial, Formant dial, Dual Vocals selector, Echo dial,
   Reverb dial
 - **Cronk** (0–100 %, clock-face dial): the harshness control. It scales
-  the shifter's sweep window log-spaced from 40 ms (0 %, smooth) down to
-  8 ms (100 %, maximum grit) — the floor is set where the voice stays
-  intelligible. Corrections are instant at every setting — cronk shapes
-  texture, not speed.
+  the shifter's sweep window log-spaced from 50 ms (0 %, smooth) down to
+  14 ms (100 %, maximum grit) — the floor is set where the sound stays
+  clean enough for professional use. Corrections are instant at every
+  setting — cronk shapes texture, not speed. Ratio changes ride a ~5 ms
+  de-click ramp, so note jumps are clean but still sound instant.
 - Formant shift: PSOLA-style pitch-synchronous granular processing driven by
   the tuner's pitch tracking — reshapes the main vocal's character (±12 st)
   while the tuned pitch stays put.
-- **Dual Vocals** selector (Off / Pitch 1 / Pitch 2): Off by default. The
-  main vocal always stays on level; Pitch 1 layers an octave-up double
-  underneath, Pitch 2 an octave-down double.
+- **Dual Vocals** harmony selector (Off / 3rd Up / 5th Up / Octave Up /
+  Octave Down) with a **Dual Level** dial: Off by default. The main vocal
+  always stays on level; the harmony voice is layered underneath at the
+  chosen level. 3rd and 5th follow the selected key/scale like a real
+  harmonizer (fixed major-3rd/perfect-5th in Chromatic).
 - Echo: a single rotary dial (0–100 %), fixed 375 ms feedback delay that
   self-ducks: repeats pull back while the vocal is present and bloom into
   the gaps, so the mix never gets muddy. At 0 it is fully inactive.
 - Reverb: same dial-as-activator pattern (0–100 %) after the echo. Both work
   independently of the tune On/Off button, so the dry bypass can still carry
   space.
-- Live tuning display: a scrolling note-track — the target note drawn as
-  bold stepped teal blocks (the steps are the note changes you hear), the
-  raw voice as a thin pink line being pulled onto them, with the current
-  note named large on the right.
+- Pitch-correction meter (Antares-style): a green → red scale showing how
+  hard the tuner is pulling — green means the note barely needed
+  correcting, red means the original note was way off — with the current
+  target note named large beside it.
 
 Signal chain: detect → quantise → shift → formant → dual voice → echo →
 reverb.

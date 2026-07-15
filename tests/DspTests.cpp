@@ -99,6 +99,15 @@ void testQuantizer()
     q.set (4, hardtune::Scale::minor);
     check (q.snapMidi (65.4f) == 66, "E minor 65.4 -> F#4");
     check (q.snapMidi (64.6f) == 64, "E minor 64.6 -> E4");
+
+    // Scale-degree harmony steps (what the Dual Vocals 3rd/5th use).
+    q.set (0, hardtune::Scale::major);
+    check (q.stepInScale (60, 2) == 64, "C major: 3rd above C4 is E4");
+    check (q.stepInScale (60, 4) == 67, "C major: 5th above C4 is G4");
+    check (q.stepInScale (64, 2) == 67, "C major: 3rd above E4 is G4");
+    check (q.stepInScale (60, -2) == 57, "C major: 3rd below C4 is A3");
+    q.set (9, hardtune::Scale::minorPentatonic);
+    check (q.stepInScale (57, 2) == 62, "A min pent: 2 steps above A3 is D4");
 }
 
 void testEndToEnd()
@@ -193,11 +202,11 @@ void testCronkMapping()
     std::printf ("Cronk mapping (0%% soft -> 100%% extreme, log-spaced):\n");
     using PS = hardtune::PitchShifter;
 
-    check (std::abs (PS::cronkToWindowSeconds (0.0) - 0.04) < 1e-9, "0%% -> 40 ms");
-    check (std::abs (PS::cronkToWindowSeconds (100.0) - 0.008) < 1e-9, "100%% -> 8 ms floor");
+    check (std::abs (PS::cronkToWindowSeconds (0.0) - 0.05) < 1e-9, "0%% -> 50 ms");
+    check (std::abs (PS::cronkToWindowSeconds (100.0) - 0.014) < 1e-9, "100%% -> 14 ms floor");
 
     const double mid = PS::cronkToWindowSeconds (50.0);
-    check (mid > 0.017 && mid < 0.019, "50%% -> ~18 ms",
+    check (mid > 0.025 && mid < 0.028, "50%% -> ~26 ms",
            std::to_string (mid * 1000.0) + " ms");
     check (PS::cronkToWindowSeconds (150.0) == PS::cronkToWindowSeconds (100.0),
            "out-of-range input clamps");
@@ -205,7 +214,7 @@ void testCronkMapping()
 
 void testExtremeSnapWindow()
 {
-    std::printf ("Extreme snap window (8 ms floor):\n");
+    std::printf ("Extreme snap window (14 ms floor):\n");
 
     const double sampleRate = 44100.0;
     hardtune::PitchShifter shifter;
