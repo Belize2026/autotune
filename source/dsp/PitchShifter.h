@@ -67,7 +67,7 @@ public:
     {
         buffer[(size_t) (writeCount & (int64_t) mask)] = input;
 
-        if (ratio != targetRatio)
+        if (std::abs (targetRatio - ratio) > 1.0e-9)
             ratio += std::clamp (targetRatio - ratio, -rampPerSample, rampPerSample);
 
         // The tap delay drifts at (1 - ratio) samples per sample, i.e. the
