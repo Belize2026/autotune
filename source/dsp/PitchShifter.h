@@ -31,10 +31,10 @@ public:
         phase = 0.0;
         ratio = 1.0;
         targetRatio = 1.0;
-        // Full-octave ratio change traverses in ~5 ms: far too fast to hear
-        // as a glide (the jump still sounds instant) but it removes the
-        // crunch a single-sample ratio step used to cause.
-        rampPerSample = 1.0 / (0.005 * sr);
+        // Full-octave ratio change traverses in ~12 ms: the T-Pain whip.
+        // Fast enough to feel instant, slow enough that the transition is
+        // a clean, audible flick instead of a crunch.
+        rampPerSample = 1.0 / (0.012 * sr);
     }
 
     // CRONK maps 0..100% onto the sweep window, log-spaced: 0% = 50 ms

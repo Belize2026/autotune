@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build universal macOS binaries")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
 
-project(HardTune VERSION 0.7.0 LANGUAGES C CXX)
+project(HardTune VERSION 0.8.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,8 +33,8 @@ option(HARDTUNE_COPY_PLUGIN "Copy built plugins into the system plugin folders" 
 
 juce_add_plugin(HardTune
     PRODUCT_NAME                "AUTISMIDOL AUTOTUNE"
-    COMPANY_NAME                "Belize2026"
-    BUNDLE_ID                   "com.belize2026.hardtune"
+    COMPANY_NAME                "AutismIdol"
+    BUNDLE_ID                   "com.autismidol.autotune"
     PLUGIN_MANUFACTURER_CODE    Blze
     PLUGIN_CODE                 Htun
     FORMATS                     VST3 AU Standalone
@@ -55,6 +55,10 @@ target_sources(HardTune PRIVATE
     source/PluginEditor.cpp
 )
 
+# Embedded assets (logo artwork). Replace assets/logo.png with updated
+# artwork and rebuild to swap it.
+juce_add_binary_data(HardTuneAssets SOURCES assets/logo.png)
+
 target_include_directories(HardTune PRIVATE source)
 
 target_compile_definitions(HardTune PUBLIC
@@ -65,6 +69,7 @@ target_compile_definitions(HardTune PUBLIC
 
 target_link_libraries(HardTune
     PRIVATE
+        HardTuneAssets
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags

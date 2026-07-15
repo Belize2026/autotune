@@ -2,13 +2,13 @@
 ; Built in CI with:  ISCC.exe /O"dist-installer" installer\windows\HardTune.iss
 ; (paths below are relative to this file's directory)
 
-#define AppVersion "0.7.0"
+#define AppVersion "0.8.0"
 
 [Setup]
 AppId={{D4C0FFEE-2026-4A11-B0B0-00C0FFEE2026}
 AppName=AUTISMIDOL AUTOTUNE
 AppVersion={#AppVersion}
-AppPublisher=Belize2026
+AppPublisher=AutismIdol
 DefaultDirName={commoncf64}\VST3
 DisableDirPage=yes
 DisableProgramGroupPage=yes

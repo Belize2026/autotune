@@ -28,7 +28,7 @@ Grab the installer for your OS from the
    - `AUTISMIDOL AUTOTUNE.component` (AU, what Logic uses) → `/Library/Audio/Plug-Ins/Components`
    - `AUTISMIDOL AUTOTUNE.vst3` → `/Library/Audio/Plug-Ins/VST3`
 4. Open your DAW. In Logic the plugin appears on a channel strip under
-   **Audio FX → Audio Units → Belize2026 → AUTISMIDOL AUTOTUNE**. If it
+   **Audio FX → Audio Units → AutismIdol → AUTISMIDOL AUTOTUNE**. If it
    doesn't show up: Logic Pro → Settings → Plug-in Manager → **Reset &
    Rescan Selection**, then restart Logic.
 
@@ -41,7 +41,7 @@ Grab the installer for your OS from the
    `C:\Program Files\Common Files\VST3` — the standard folder every VST3 DAW
    scans.
 4. Rescan plugins in your DAW (or just restart it). AUTISMIDOL AUTOTUNE
-   appears under Belize2026.
+   appears under AutismIdol.
 
 ### Uninstalling
 

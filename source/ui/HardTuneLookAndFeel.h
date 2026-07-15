@@ -52,42 +52,9 @@ public:
                            float sliderPos, float rotaryStartAngle, float rotaryEndAngle,
                            juce::Slider& slider) override
     {
-        // Sliders flagged "clockFace" (the CRONK dial) render as a clock:
-        // round face, 12 tick marks, a needle hand and a centre pin.
-        if ((bool) slider.getProperties()["clockFace"])
-        {
-            auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (6.0f);
-            const float radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
-            const auto centre = bounds.getCentre();
-            const auto face = juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre);
-
-            g.setColour (theme::panel);
-            g.fillEllipse (face);
-            g.setColour (theme::outline);
-            g.drawEllipse (face, 2.0f);
-
-            for (int t = 0; t < 12; ++t)
-            {
-                const float angle = (float) t * juce::MathConstants<float>::twoPi / 12.0f;
-                const bool major = (t % 3) == 0; // 12, 3, 6, 9 o'clock
-                const auto inner = centre.getPointOnCircumference (radius * (major ? 0.74f : 0.82f), angle);
-                const auto outer = centre.getPointOnCircumference (radius * 0.9f, angle);
-                g.setColour (theme::outline.withAlpha (major ? 1.0f : 0.45f));
-                g.drawLine ({ inner, outer }, major ? 2.2f : 1.4f);
-            }
-
-            const float toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
-            const auto tip = centre.getPointOnCircumference (radius * 0.62f, toAngle);
-            const auto tail = centre.getPointOnCircumference (radius * 0.16f, toAngle + juce::MathConstants<float>::pi);
-            g.setColour (theme::teal);
-            g.drawLine ({ tail, tip }, 3.4f);
-
-            g.setColour (theme::pink);
-            g.fillEllipse (juce::Rectangle<float> (9.0f, 9.0f).withCentre (centre));
-            g.setColour (theme::outline);
-            g.drawEllipse (juce::Rectangle<float> (9.0f, 9.0f).withCentre (centre), 1.4f);
-            return;
-        }
+        // Sliders flagged "inverted" (the big CRONK dial) swap the palette:
+        // dark track, hot pink fill, teal thumb.
+        const bool inverted = (bool) slider.getProperties()["inverted"];
 
         const float alpha = slider.isEnabled() ? 1.0f : 0.3f;
         auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (6.0f);
@@ -99,7 +66,8 @@ public:
         juce::Path track;
         track.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
                              rotaryStartAngle, rotaryEndAngle, true);
-        g.setColour (theme::control.withMultipliedAlpha (alpha));
+        g.setColour ((inverted ? theme::outline.withAlpha (0.85f) : theme::control)
+                         .withMultipliedAlpha (alpha));
         g.strokePath (track, { lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
 
         const float toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
@@ -113,12 +81,12 @@ public:
             juce::Path value;
             value.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
                                  fromAngle, toAngle, true);
-            g.setColour (theme::teal.withMultipliedAlpha (alpha));
+            g.setColour ((inverted ? theme::pink : theme::teal).withMultipliedAlpha (alpha));
             g.strokePath (value, { lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
         }
 
         const auto thumb = centre.getPointOnCircumference (arcRadius - lineW * 1.3f, toAngle);
-        g.setColour (theme::outline.withMultipliedAlpha (alpha));
+        g.setColour ((inverted ? theme::teal : theme::outline).withMultipliedAlpha (alpha));
         g.fillEllipse (juce::Rectangle<float> (lineW, lineW).withCentre (thumb));
     }
 
@@ -164,8 +132,10 @@ public:
         return juce::Font (juce::FontOptions (14.0f, juce::Font::bold));
     }
 
-    juce::Font getTextButtonFont (juce::TextButton&, int) override
+    juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override
     {
-        return juce::Font (juce::FontOptions (14.0f, juce::Font::bold));
+        // Small pills (harmony toggles) get a proportionally smaller font.
+        return juce::Font (juce::FontOptions (
+            juce::jmin (14.0f, (float) buttonHeight * 0.55f), juce::Font::bold));
     }
 };

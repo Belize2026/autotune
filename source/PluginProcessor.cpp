@@ -6,7 +6,9 @@ namespace
 const juce::StringArray keyNames { "C", "C#", "D", "D#", "E", "F",
                                    "F#", "G", "G#", "A", "A#", "B" };
 const juce::StringArray scaleNames { "Chromatic", "Major", "Minor", "Minor Pentatonic" };
-const juce::StringArray dualNames { "Off", "3rd Up", "5th Up", "Octave Up", "Octave Down" };
+const char* const harmonyIDs[]   = { "h3rd", "h5th", "hoctup", "hoctdown" };
+const char* const harmonyNames[] = { "Harmony 3rd", "Harmony 5th",
+                                     "Harmony Octave Up", "Harmony Octave Down" };
 } // namespace
 
 HardTuneAudioProcessor::HardTuneAudioProcessor()
@@ -20,8 +22,9 @@ HardTuneAudioProcessor::HardTuneAudioProcessor()
     scaleParam   = apvts.getRawParameterValue ("scale");
     cronkParam   = apvts.getRawParameterValue ("cronk");
     formantParam   = apvts.getRawParameterValue ("formant");
-    dualParam      = apvts.getRawParameterValue ("dual");
     dualLevelParam = apvts.getRawParameterValue ("duallevel");
+    for (int v = 0; v < numHarmonyVoices; ++v)
+        harmonyParams[v] = apvts.getRawParameterValue (harmonyIDs[v]);
     echoParam    = apvts.getRawParameterValue ("echo");
     reverbParam  = apvts.getRawParameterValue ("reverb");
 }
@@ -44,8 +47,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout HardTuneAudioProcessor::crea
         juce::ParameterID { "formant", 1 }, "Formant",
         juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("st")));
-    params.push_back (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { "dual", 3 }, "Dual Vocals", dualNames, 0));
+    for (int v = 0; v < 4; ++v)
+        params.push_back (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { harmonyIDs[v], 1 }, harmonyNames[v], false));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "duallevel", 1 }, "Dual Level",
         juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 50.0f,
@@ -77,7 +81,8 @@ void HardTuneAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     detector.prepare (sampleRate);
     shifter.prepare (sampleRate);
-    dualShifter.prepare (sampleRate);
+    for (auto& harmony : harmonyShifters)
+        harmony.prepare (sampleRate);
 
     // Re-detect roughly every 3 ms: corrections land essentially instantly.
     detectionHopSamples   = juce::jmax (32, (int) std::lround (sampleRate * 0.003));
@@ -121,8 +126,9 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         for (int i = 0; i < numSamples; ++i)
         {
             shifter.skipSample (channel[i]);
-            dualShifter.skipSample (channel[i]);
             formantShifter.skipSample (channel[i]);
+            for (auto& harmony : harmonyShifters)
+                harmony.skipSample (channel[i]);
         }
 
         detectedHz.store (0.0f);
@@ -138,7 +144,8 @@ void HardTuneAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     const double cronkWindow =
         hardtune::PitchShifter::cronkToWindowSeconds ((double) cronkParam->load());
     shifter.setWindowSeconds (cronkWindow);
-    dualShifter.setWindowSeconds (cronkWindow);
+    for (auto& harmony : harmonyShifters)
+        harmony.setWindowSeconds (cronkWindow);
 
     samplesSinceDetection += numSamples;
     if (samplesSinceDetection >= detectionHopSamples)
@@ -231,39 +238,54 @@ void HardTuneAudioProcessor::applyFormantStage (float* channel, int numSamples)
 
 void HardTuneAudioProcessor::applyDualStage (float* channel, int numSamples)
 {
-    // DUAL VOCALS: the main vocal stays on level; a harmony voice is layered
-    // underneath at the DUAL LEVEL amount. 3rd/5th are scale-aware (they
-    // follow the selected key/scale like a real harmonizer); in Chromatic
-    // they fall back to fixed major-3rd/perfect-5th intervals.
-    const int mode = (int) dualParam->load();
+    // Stackable harmony voices (tick any combination): the main vocal stays
+    // on level and every enabled voice is layered underneath at the DUAL
+    // LEVEL amount. 3rd/5th are scale-aware (they follow the selected
+    // key/scale like a real harmonizer); in Chromatic they fall back to
+    // fixed major-3rd/perfect-5th intervals.
+    bool active[numHarmonyVoices];
+    bool any = false;
+    for (int v = 0; v < numHarmonyVoices; ++v)
+    {
+        active[v] = harmonyParams[v]->load() > 0.5f;
+        any = any || active[v];
+    }
 
-    if (mode == 0 || currentNoteMidi < 0)
+    if (! any || currentNoteMidi < 0)
     {
         for (int i = 0; i < numSamples; ++i)
-            dualShifter.skipSample (channel[i]);
+            for (auto& harmony : harmonyShifters)
+                harmony.skipSample (channel[i]);
         return;
     }
 
     const bool chromatic =
         (hardtune::Scale) (int) scaleParam->load() == hardtune::Scale::chromatic;
 
-    int harmonyMidi = currentNoteMidi;
-    switch (mode)
-    {
-        case 1: harmonyMidi = chromatic ? currentNoteMidi + 4
-                                        : quantizer.stepInScale (currentNoteMidi, 2);  break;
-        case 2: harmonyMidi = chromatic ? currentNoteMidi + 7
-                                        : quantizer.stepInScale (currentNoteMidi, 4);  break;
-        case 3: harmonyMidi = currentNoteMidi + 12; break;
-        case 4: harmonyMidi = currentNoteMidi - 12; break;
-        default: break;
-    }
-
-    dualShifter.setRatio (std::exp2 ((double) (harmonyMidi - currentNoteMidi) / 12.0));
+    const int harmonyMidi[numHarmonyVoices] = {
+        chromatic ? currentNoteMidi + 4 : quantizer.stepInScale (currentNoteMidi, 2),
+        chromatic ? currentNoteMidi + 7 : quantizer.stepInScale (currentNoteMidi, 4),
+        currentNoteMidi + 12,
+        currentNoteMidi - 12,
+    };
+    for (int v = 0; v < numHarmonyVoices; ++v)
+        harmonyShifters[v].setRatio (
+            std::exp2 ((double) (harmonyMidi[v] - currentNoteMidi) / 12.0));
 
     const float level = dualLevelParam->load() * 0.01f;
     for (int i = 0; i < numSamples; ++i)
-        channel[i] += level * dualShifter.processSample (channel[i]);
+    {
+        const float dry = channel[i];
+        float stack = 0.0f;
+        for (int v = 0; v < numHarmonyVoices; ++v)
+        {
+            if (active[v])
+                stack += harmonyShifters[v].processSample (dry);
+            else
+                harmonyShifters[v].skipSample (dry);
+        }
+        channel[i] = dry + level * stack;
+    }
 }
 
 void HardTuneAudioProcessor::applyPostEffects (juce::AudioBuffer<float>& buffer, bool tuneWasApplied)

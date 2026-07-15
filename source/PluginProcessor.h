@@ -61,15 +61,17 @@ private:
     std::atomic<float>* scaleParam   = nullptr;
     std::atomic<float>* cronkParam   = nullptr;
     std::atomic<float>* formantParam   = nullptr;
-    std::atomic<float>* dualParam      = nullptr;
     std::atomic<float>* dualLevelParam = nullptr;
+    // Stackable harmony voices: 3rd, 5th, octave up, octave down.
+    static constexpr int numHarmonyVoices = 4;
+    std::atomic<float>* harmonyParams[numHarmonyVoices] = {};
     std::atomic<float>* echoParam    = nullptr;
     std::atomic<float>* reverbParam  = nullptr;
 
     hardtune::PitchDetector  detector;
     hardtune::Quantizer      quantizer;
     hardtune::PitchShifter   shifter;
-    hardtune::PitchShifter   dualShifter; // octave-up/down double voice
+    hardtune::PitchShifter   harmonyShifters[numHarmonyVoices];
     hardtune::FormantShifter formantShifter;
     hardtune::Echo           echo;
 

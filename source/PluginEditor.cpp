@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 
+#include "BinaryData.h"
+
 namespace
 {
 juce::String noteNameForHz (float hz)
@@ -16,6 +18,8 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
 {
     setLookAndFeel (&lookAndFeel);
     auto& apvts = processor.getValueTreeState();
+
+    logo = juce::ImageCache::getFromMemory (BinaryData::logo_png, BinaryData::logo_pngSize);
 
     powerButton.setClickingTogglesState (true);
     addAndMakeVisible (powerButton);
@@ -63,14 +67,27 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupCombo (keyBox, "key", keyAttachment);
     setupLabel (scaleLabel, "SCALE");
     setupCombo (scaleBox, "scale", scaleAttachment);
-    setupLabel (dualLabel, "DUAL VOCALS");
-    setupCombo (dualBox, "dual", dualAttachment);
 
-    // CRONK: harshness dial, 0% = softest texture, 100% = maximum extreme.
-    // Rendered as a clock face (see HardTuneLookAndFeel).
+    // Stackable harmony voices: tick any combination.
+    setupLabel (dualLabel, "HARMONY (STACK ANY)");
+    static const char* harmonyIDs[]     = { "h3rd", "h5th", "hoctup", "hoctdown" };
+    static const char* harmonyText[]    = { "3RD", "5TH", "OCT +", "OCT -" };
+    for (int v = 0; v < 4; ++v)
+    {
+        auto& button = harmonyButtons[v];
+        button.setButtonText (harmonyText[v]);
+        button.setClickingTogglesState (true);
+        button.setColour (juce::TextButton::buttonOnColourId, theme::teal);
+        addAndMakeVisible (button);
+        harmonyAttachments[v] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            apvts, harmonyIDs[v], button);
+    }
+
+    // CRONK: the big centre dial, 0% = softest texture, 100% = maximum
+    // extreme. Inverted colours relative to the other knobs.
     setupLabel (cronkLabel, "CRONK");
     setupDial (cronkDial, "cronk", " %", cronkAttachment);
-    cronkDial.getProperties().set ("clockFace", true);
+    cronkDial.getProperties().set ("inverted", true);
     setupLabel (dualLevelLabel, "DUAL LEVEL");
     setupDial (dualLevelDial, "duallevel", " %", dualLevelAttachment);
     setupLabel (formantLabel, "FORMANT");
@@ -92,7 +109,7 @@ HardTuneAudioProcessorEditor::HardTuneAudioProcessorEditor (HardTuneAudioProcess
     setupEndLabel (mildLabel, "LESS", juce::Justification::centredLeft, theme::textDim);
     setupEndLabel (extremeLabel, "EXTREME", juce::Justification::centredRight, theme::pink);
 
-    setSize (560, 500);
+    setSize (560, 520);
     startTimerHz (30);
 }
 
@@ -105,27 +122,21 @@ void HardTuneAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (theme::background);
 
-    // Logo-style header: hot pink "IDOL" peeking out from behind metallic
-    // teal "AUTISM", both with the sticker outline, like the artwork.
-    const juce::Font big (juce::FontOptions (34.0f, juce::Font::bold));
-    juce::GlyphArrangement measure;
-    measure.addLineOfText (big, "AUTISM", 0.0f, 0.0f);
-    const float autismWidth = measure.getBoundingBox (0, -1, true).getWidth();
-
-    const float hx = (float) headerArea.getX();
-    const float baseline = (float) headerArea.getBottom() - 8.0f;
-
-    g.setFont (big);
-    g.setColour (theme::pink);
-    g.drawSingleLineText ("IDOL", (int) (hx + autismWidth * 0.62f), (int) (baseline + 16.0f));
-    g.setColour (theme::outline);
-    g.drawSingleLineText ("AUTISM", (int) hx + 2, (int) baseline + 2); // outline shadow
-    g.setColour (theme::teal);
-    g.drawSingleLineText ("AUTISM", (int) hx, (int) baseline);
+    // The AUTISMIDOL logo artwork, scaled into the header.
+    if (logo.isValid())
+    {
+        const float scale = juce::jmin ((float) headerArea.getHeight() / (float) logo.getHeight(),
+                                        (float) headerArea.getWidth() / (float) logo.getWidth());
+        const int w = (int) ((float) logo.getWidth() * scale);
+        const int h = (int) ((float) logo.getHeight() * scale);
+        g.drawImage (logo,
+                     headerArea.getX(), headerArea.getCentreY() - h / 2, w, h,
+                     0, 0, logo.getWidth(), logo.getHeight());
+    }
 
     g.setColour (theme::textDim);
     g.setFont (juce::Font (juce::FontOptions (10.5f, juce::Font::bold)));
-    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.7",
+    g.drawText ("AUTOTUNE  |  instant hard pitch snap  |  v0.8",
                 getLocalBounds().removeFromBottom (24),
                 juce::Justification::centred);
 }
@@ -134,55 +145,60 @@ void HardTuneAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (20);
 
-    auto header = area.removeFromTop (40);
+    auto header = area.removeFromTop (52);
     powerButton.setBounds (header.removeFromRight (96).withSizeKeepingCentre (96, 34));
-    headerArea = header;
+    headerArea = header.withTrimmedRight (8);
 
     area.removeFromTop (12);
-    display.setBounds (area.removeFromTop (128));
+    display.setBounds (area.removeFromTop (122));
     area.removeFromTop (14);
 
-    // Key / Scale / Dual toggle row.
-    auto row = area.removeFromTop (50);
+    // Key / Scale / Harmony row.
+    auto row = area.removeFromTop (64);
     const int colW = row.getWidth() / 3;
     auto keyArea = row.removeFromLeft (colW).reduced (6, 0);
     auto scaleArea = row.removeFromLeft (colW).reduced (6, 0);
-    auto dualArea = row.reduced (6, 0);
+    auto harmonyArea = row.reduced (6, 0);
 
     keyLabel.setBounds (keyArea.removeFromTop (16));
     keyBox.setBounds (keyArea.removeFromTop (30));
     scaleLabel.setBounds (scaleArea.removeFromTop (16));
     scaleBox.setBounds (scaleArea.removeFromTop (30));
-    dualLabel.setBounds (dualArea.removeFromTop (16));
-    dualBox.setBounds (dualArea.removeFromTop (30));
+
+    dualLabel.setBounds (harmonyArea.removeFromTop (16));
+    auto harmonyTop = harmonyArea.removeFromTop (22);
+    auto harmonyBottom = harmonyArea.removeFromTop (22).translated (0, 2);
+    harmonyButtons[0].setBounds (harmonyTop.removeFromLeft (harmonyTop.getWidth() / 2).reduced (2, 1));
+    harmonyButtons[1].setBounds (harmonyTop.reduced (2, 1));
+    harmonyButtons[2].setBounds (harmonyBottom.removeFromLeft (harmonyBottom.getWidth() / 2).reduced (2, 1));
+    harmonyButtons[3].setBounds (harmonyBottom.reduced (2, 1));
 
     area.removeFromTop (14);
 
-    // Dial row: Cronk / Dual Level / Formant / Echo / Reverb.
-    auto dials = area.removeFromTop (150);
-    const int dialW = dials.getWidth() / 5;
-    const auto cronkCell = dials.withWidth (dialW); // for the end labels below
+    // Dial row: Dual Level / Formant / BIG CRONK (centre) / Echo / Reverb.
+    auto dials = area.removeFromTop (168);
+    const int bigW = 168;
+    const int smallW = (dials.getWidth() - bigW) / 4;
 
-    auto layoutDial = [&dials, dialW] (juce::Label& label, juce::Slider& dial)
+    auto layoutSmall = [&dials, smallW] (juce::Label& label, juce::Slider& dial)
     {
-        auto cell = dials.removeFromLeft (dialW).reduced (4, 0);
+        auto cell = dials.removeFromLeft (smallW).reduced (2, 0);
         label.setBounds (cell.removeFromTop (16));
-        dial.setBounds (cell);
+        dial.setBounds (cell.withTrimmedBottom (34));
     };
 
-    layoutDial (cronkLabel, cronkDial);
-    layoutDial (dualLevelLabel, dualLevelDial);
-    layoutDial (formantLabel, formantDial);
-    layoutDial (echoLabel, echoDial);
-    layoutDial (reverbLabel, reverbDial);
+    layoutSmall (dualLevelLabel, dualLevelDial);
+    layoutSmall (formantLabel, formantDial);
 
-    // LESS / EXTREME markers under the CRONK dial.
-    auto cronkEnds = area.removeFromTop (12)
-                         .withX (cronkCell.getX())
-                         .withWidth (dialW)
-                         .reduced (8, 0);
+    auto cronkCell = dials.removeFromLeft (bigW).reduced (2, 0);
+    cronkLabel.setBounds (cronkCell.removeFromTop (16));
+    auto cronkEnds = cronkCell.removeFromBottom (12).reduced (14, 0);
+    cronkDial.setBounds (cronkCell);
     mildLabel.setBounds (cronkEnds.removeFromLeft (cronkEnds.getWidth() / 2));
     extremeLabel.setBounds (cronkEnds);
+
+    layoutSmall (echoLabel, echoDial);
+    layoutSmall (reverbLabel, reverbDial);
 }
 
 void HardTuneAudioProcessorEditor::timerCallback()
